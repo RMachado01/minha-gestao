@@ -1,0 +1,22 @@
+# dependencies and builds
+node_modules/
+.next/
+dist/
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# runtime logs and local tooling
+*.log
+.vercel/
+.supabase/
+.frontend-git-backup/
+.claude/*.lock
+.DS_Store
+Thumbs.db
