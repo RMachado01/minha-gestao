@@ -15,6 +15,17 @@ Sistema web de gestão financeira pessoal, com foco em:
 
 Usuário único (ou multiusuário simples) — não é um SaaS multi-tenant complexo neste primeiro momento, mas a modelagem deve deixar a porta aberta para isso (todo dado pendurado em `user_id`).
 
+### 1.1 Estado atual do projeto — 12/07/2026
+
+O projeto deixou de ser apenas uma especificação e já possui uma fundação executável:
+
+- **Frontend:** Next.js 16.2.10, React 19, Tailwind CSS 4 e Recharts, com dashboards navegáveis e dados mockados.
+- **Backend:** FastAPI com schemas Pydantic, modelos SQLAlchemy assíncronos e rotas versionadas em `/api/v1`.
+- **Banco e autenticação:** migração inicial do Supabase/Postgres com RLS; clientes SSR/browser e proxy de sessão preparados no frontend.
+- **Versionamento:** repositório privado [RMachado01/minha-gestao](https://github.com/RMachado01/minha-gestao), branch `main`.
+- **Execução local:** frontend em `http://localhost:3000`; API em `http://localhost:8000`; OpenAPI em `/docs`.
+- **Limite atual:** formulários ainda usam estado local/mock. Persistência real será ativada após criar o projeto Supabase e configurar as variáveis de ambiente.
+
 ---
 
 ## 2. Stack Técnica
@@ -35,14 +46,14 @@ A ideia original (TypeScript + FastAPI + PostgreSQL) é sólida. Ajustes recomen
 | Data fetching | — | **Server Components por padrão + TanStack Query onde houver interação/cache no cliente** | Evita JavaScript e estado duplicado sem perder boa UX em tabelas e mutações |
 | Estado global | — | **URL + estado local primeiro; Zustand somente com caso de uso comprovado** | Filtros compartilháveis ficam na URL; evita store global prematura |
 | Formulários | — | **React Hook Form + Zod** | Validação tipada, mensagens consistentes e integração com componentes acessíveis |
-| Autenticação | — | **Sessão em cookie `HttpOnly`, `Secure`, `SameSite`**; tokens curtos apenas se a arquitetura exigir | Reduz exposição de credenciais no navegador; nunca salvar token em `localStorage` |
+| Autenticação | — | **Supabase Auth + `@supabase/ssr`**, sessão em cookies e validação do Bearer token no FastAPI | Integra Next.js SSR, Postgres/RLS e futuro acesso familiar sem armazenar senhas na aplicação |
 | Jobs agendados | — | **APScheduler** (simples) ou **Celery + Redis** (se crescer) | Necessário para gerar lançamentos recorrentes automaticamente todo mês |
 | Cache/fila | — | **Redis** (opcional no MVP) | Útil para KPIs pesados e jobs |
 | Containerização | — | **Docker + docker-compose** (backend, frontend, db, redis) | Ambiente reprodutível |
-| Deploy | — | Backend: Railway / Fly.io / Render. Frontend: Vercel. DB: gerenciado (Supabase/Neon/RDS) | Custo baixo, fácil de escalar depois |
+| Deploy | — | **Frontend: Vercel; banco/auth: Supabase; backend: definir entre Vercel Functions, Railway ou Render** | Decisão alinhada ao estado atual; backend continua separado até medir limites de execução |
 | Testes | — | `pytest` + `httpx` (backend), `Vitest`/`Playwright` (frontend) | Crítico em sistema financeiro — cobrir cálculo de saldo, recorrência e KPIs |
 
-### 2.2 Monorepo sugerido
+### 2.2 Monorepo atual
 
 ```
 /backend        -> FastAPI (Python)
@@ -61,7 +72,13 @@ A ideia original (TypeScript + FastAPI + PostgreSQL) é sólida. Ajustes recomen
     /lib             -> API client, formatos, utilitários compartilhados
     /styles          -> tokens e estilos globais
 docker-compose.yml
+/supabase
+  /migrations   -> schema SQL, constraints, índices e políticas RLS
+/docs           -> especificações e decisões de produto
+DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 ```
+
+> Ainda não existe `docker-compose.yml`; ele permanece como melhoria futura. O repositório raiz é o único repositório Git — não criar `.git` dentro de `frontend` ou `backend`.
 
 ### 2.3 Princípios de arquitetura do frontend
 
@@ -92,6 +109,16 @@ docker-compose.yml
 **User**
 - id, nome, email, senha_hash, created_at
 
+> Com Supabase Auth, a credencial pertence a `auth.users`. Dados editáveis da pessoa ficam em `public.profiles`; a aplicação não cria nem persiste `senha_hash` diretamente.
+
+**Profile**
+- id (FK para `auth.users`), nome_completo, telefone, estado, moeda
+
+**Household / HouseholdMember** (gestão familiar futura)
+- `Household`: id, nome, owner_id, created_at
+- `HouseholdMember`: household_id, user_id, papel (`owner` | `manager` | `member` | `viewer`), status
+- Cada familiar terá login próprio; nunca compartilhar credenciais.
+
 **Category** (categorias, separadas por tipo)
 - id, user_id, nome, tipo (`income` | `expense`), cor, ícone
 
@@ -103,6 +130,12 @@ docker-compose.yml
 - recurrence_id (FK opcional para `RecurrenceRule`)
 - account_id (opcional — se houver múltiplas contas bancárias)
 - status: `pending` | `paid` | `received`
+- payment_method: `pix` | `credit` | `cash` | `benefit`
+- credit_card_id (obrigatório quando `payment_method=credit`)
+- benefit_kind: `vr` | `va` | `flex` (quando `tipo=benefit`)
+- idempotency_key
+
+> Regra: lançamentos de VR/VA usam categoria `Alimentação` automaticamente. Compras no crédito sempre referenciam um cartão cadastrado.
 
 **RecurrenceRule** (para assinaturas, parcelas e contas fixas)
 - id, user_id, descrição
@@ -156,6 +189,15 @@ docker-compose.yml
 - outros_custos (manutenção, pedágio, app fees etc. — pode ser lista de itens)
 - lucro_liquido (**calculado**: receita_bruta - custo_combustivel - outros_custos)
 - km_rodados (opcional, para calcular custo por km)
+- vehicle_id, unidades_consumidas (kWh ou litros), preço_unitário, horas_trabalhadas
+
+**Vehicle**
+- id, user_id, marca, modelo, ano, estado, ativo
+- motorização: `combustion` | `hybrid` | `electric`
+- eficiência: elétrico em `kWh/100 km`; combustão/híbrido em `km/l`
+- preço_unitário: `R$/kWh` ou `R$/litro`
+
+> Cálculo automático: elétrico usa `(km × kWh_por_100km / 100) × tarifa`; combustão/híbrido usa `(km / km_por_litro) × preço_litro`. O backend recalcula e valida o valor enviado pelo frontend.
 
 **Cálculos derivados / KPIs do módulo Uber**
 - Lucro líquido do período (dia/semana/mês)
@@ -221,7 +263,19 @@ docker-compose.yml
 - Valores monetários trafegam como strings decimais; datas e instantes seguem as regras da seção 2.3.
 - Toda resposta de mutação devolve o recurso canônico salvo pelo servidor.
 - Endpoints de escrita aplicam rate limit, idempotência e auditoria conforme o risco.
-- CORS usa allowlist explícita; autenticação por cookie exige proteção CSRF nas mutações.
+- CORS usa allowlist explícita. O Next.js mantém a sessão Supabase em cookies SSR; o FastAPI recebe `Authorization: Bearer <access_token>` e deriva o usuário do claim `sub` validado.
+
+**Rotas já estruturadas:**
+
+- `GET /api/v1/health` — pública.
+- `POST /api/v1/transactions` — cria lançamento autenticado.
+- `POST /api/v1/credit-cards` — cadastra cartão sem armazenar número completo/CVV.
+- `POST /api/v1/vehicles` e `POST /api/v1/vehicles/{id}/energy-cost` — veículo e custo energético.
+- `POST /api/v1/uber/daily-entries` — diário com consumo e lucro recalculados.
+- `PUT /api/v1/profile` — perfil do usuário.
+- `POST /api/v1/households/{id}/invites` — convite familiar futuro.
+
+Exceto o health check, mutações exigem token Supabase. As respostas atuais validam contratos, mas ainda precisam ser conectadas às sessões SQLAlchemy/Supabase para persistência.
 
 ---
 
@@ -412,7 +466,7 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 ### 6.12 Critérios de validação visual
 
 - Um usuário deve localizar saldo, próxima conta e ação de adicionar em até poucos segundos, sem treinamento.
-- A navegação principal não excede seis destinos no desktop nem cinco no mobile.
+- A navegação desktop agrupa os módulos por frequência; no mobile, os cinco destinos principais ficam visíveis e os demais vão para `Mais`.
 - Nenhum fluxo crítico depende de hover, gesto de arrastar, cor ou ícone isolado.
 - Layout validado em 320, 375, 768, 1024 e 1440 px, com zoom de 200%.
 - Conteúdo testado com valores negativos, zero, milhões, descrições longas e listas vazias/densas.
@@ -420,16 +474,51 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 
 ---
 
-## 7. Próximos Passos Sugeridos
+## 7. Estado de Implementação e Próximos Passos
 
-1. Registrar decisões arquiteturais curtas (ADRs) para autenticação, dinheiro, datas e recorrência.
-2. Criar o monorepo, CI e design tokens; implementar primeiro o shell responsivo e as primitives acessíveis.
-3. Modelar o schema no SQLAlchemy e gerar a migration inicial no Alembic, incluindo índices, constraints, auditoria e idempotência.
-4. Publicar o OpenAPI de `/api/v1` e gerar o cliente TypeScript antes de construir telas de negócio.
-5. Entregar uma fatia vertical completa: Dashboard + transações, com loading/error/empty, testes e telemetria.
-6. Implementar recorrências e o job idempotente; depois investimentos, cartões e Uber.
-7. Criar as views de agregação e endpoints `/dashboard/*` já formatados para os gráficos.
-8. Fazer revisão de segurança, acessibilidade, performance e recuperação de backup antes do primeiro deploy real.
+### 7.1 Implementado
+
+- Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com dados mockados.
+- Tema claro/escuro persistido, shell responsivo e design Bento/Glass inspirado no iOS.
+- Formulário de receitas, despesas e VR/VA; seleção de cartão quando a compra usa crédito.
+- Cadastro visual de cartões e calendário de vencimentos.
+- Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro e lucro/km.
+- Login Supabase preparado com `@supabase/ssr` e `proxy.ts` do Next.js 16.
+- Configurações de perfil e estrutura inicial de grupo familiar.
+- FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares.
+- Migração inicial do Supabase com constraints, índices e RLS por proprietário.
+- Build de produção, TypeScript, ESLint e compilação Python validados.
+- Repositório Git privado publicado e sincronizado em `origin/main`.
+
+### 7.2 Próximos passos prioritários
+
+1. Criar o projeto Supabase e aplicar `supabase/migrations/202607120001_initial_schema.sql`.
+2. Configurar `frontend/.env.local` e variáveis Development/Preview/Production na Vercel.
+3. Trocar mocks por queries reais do Supabase e mutações via API, começando por login → perfil → cartões → transações.
+4. Persistir diário Uber e recalcular consumo/lucro no backend; o frontend nunca será a autoridade do cálculo.
+5. Implementar criação de conta, recuperação de senha, logout e callback de autenticação.
+6. Adicionar políticas familiares que permitam acesso por `household_id` conforme papel, sem ampliar as políticas antes dos fluxos estarem definidos.
+7. Gerar o cliente TypeScript pelo OpenAPI e padronizar envelopes de erro.
+8. Criar testes unitários de dinheiro/consumo, integração da API e E2E dos fluxos críticos.
+9. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations.
+10. Publicar preview na Vercel e definir a hospedagem do FastAPI antes do primeiro deploy de produção.
+
+### 7.3 Comandos locais
+
+```powershell
+# frontend
+cd frontend
+npm install
+npm run dev
+
+# backend (outro terminal)
+cd backend
+.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8000
+```
+
+Arquivos de ambiente devem ser criados a partir dos `.env.example` e nunca versionados. Consultar `DEPLOYMENT.md` para o checklist de publicação.
 
 ## 8. Definição de Pronto (Definition of Done)
 
@@ -455,6 +544,9 @@ Uma funcionalidade só está pronta quando:
 - [Vercel Geist — Tabs](https://vercel.com/geist/tabs)
 - [Vercel Geist — Sheet](https://vercel.com/geist/sheet)
 - [Vercel — Toolbar e auditoria de previews](https://vercel.com/docs/vercel-toolbar)
+- [Vercel — variáveis de ambiente](https://vercel.com/docs/environment-variables)
+- [Supabase — Next.js e autenticação SSR](https://supabase.com/nextjs)
+- [Supabase — Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Vercel Templates — dashboard Next.js + shadcn/ui](https://examples.vercel.com/templates/next.js/next-js-and-shadcn-ui-admin-dashboard) — referência visual comunitária; avaliar, não copiar integralmente.
 - [Atlassian Design — acessibilidade em drag-and-drop](https://atlassian.design/components/pragmatic-drag-and-drop/accessibility-guidelines/)
 - [React — Hooks](https://react.dev/reference/react/hooks)
@@ -463,4 +555,4 @@ Uma funcionalidade só está pronta quando:
 
 ---
 
-*Última atualização: 11/07/2026. Atualizar a data e as decisões conforme o projeto evolui.*
+*Última atualização: 12/07/2026. Atualizar a data, o estado implementado e as decisões conforme o projeto evolui.*
