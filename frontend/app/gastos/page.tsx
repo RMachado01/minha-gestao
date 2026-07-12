@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 import { CompositionDonut } from "@/components/charts/CompositionDonut";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
@@ -49,12 +50,14 @@ export default function GastosPage() {
     modo === "anual" ? "Total gasto mês a mês no ano" : "Total gasto nos últimos 6 meses";
 
   return (
-    <section aria-labelledby="gastos-heading" className="gz-page">
+    <section aria-labelledby="gastos-heading" className="gz-page flex flex-col gap-6">
       <style>{gzKeyframes}</style>
 
       <h2 id="gastos-heading" className="sr-only">
         Composição de gastos
       </h2>
+
+      <PageHeader eyebrow="Finanças" title="Composição de gastos" description="Entenda quais categorias mais consomem seu orçamento e como evoluem no tempo." />
 
       <BentoGrid>
         {/* Donut de composição — card de destaque (hero) */}

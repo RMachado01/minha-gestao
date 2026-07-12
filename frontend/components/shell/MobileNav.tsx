@@ -2,16 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/lib/nav";
+import { CreditCard, LayoutDashboard, Menu, Plus, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-/** Navegação horizontal com scroll (mobile/tablet). Visível abaixo de lg. */
+const ITEMS = [
+  { href: "/", label: "Início", icon: LayoutDashboard },
+  { href: "/fluxo-caixa", label: "Fluxo", icon: TrendingUp },
+  { href: "/lancamentos", label: "Adicionar", icon: Plus, primary: true },
+  { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/configuracoes", label: "Mais", icon: Menu },
+];
+
+/** Barra inferior mobile, otimizada para alcance com uma mão. */
 export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+    <nav className="ios-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.4rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
+      {ITEMS.map(({ href, label, icon: Icon, primary }) => {
         const active =
           href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
@@ -19,13 +27,14 @@ export function MobileNav() {
             key={href}
             href={href}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-all",
+              "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium transition-all",
+              primary && "-mt-5 min-h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl shadow-indigo-500/25",
               active
-                ? "glass-strong text-ink"
+                ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)] text-ink"
                 : "text-ink-soft hover:text-ink",
             )}
           >
-            <Icon className={cn("h-4 w-4", active ? "text-accent" : "text-ink-muted")} />
+            <Icon className={cn("h-4 w-4", primary ? "size-5 text-white" : active ? "text-accent" : "text-ink-muted")} />
             {label}
           </Link>
         );

@@ -341,6 +341,8 @@ Pesquisa aplicada de boas práticas de dashboards financeiros (2026) para guiar 
 
 **Direção visual:** interface sóbria, contemporânea e densa na medida certa. Usar superfícies neutras, bordas sutis e uma única cor de marca. Verde e vermelho ficam reservados para semântica financeira; não depender somente da cor para comunicar estado.
 
+**Decisão de materiais:** Liquid Glass fica restrito à camada funcional flutuante — sidebar, topbar, filtro de período, barra mobile, popovers e resumos interativos. Cards, formulários, tabelas e gráficos usam superfícies sólidas `surface-card`; não aplicar blur em toda a camada de conteúdo.
+
 **Tokens obrigatórios:** cores semânticas, tipografia, espaçamento, raios, sombras, larguras de conteúdo e duração de animação em CSS variables. Suportar tema claro/escuro sem duplicar classes por componente. Números financeiros usam algarismos tabulares (`font-variant-numeric: tabular-nums`).
 
 **Layout:**
@@ -479,7 +481,7 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 ### 7.1 Implementado
 
 - Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com dados mockados.
-- Tema claro/escuro persistido, shell responsivo e design Bento/Glass inspirado no iOS.
+- Tema claro/escuro persistido, shell responsivo, superfícies sólidas no conteúdo e Liquid Glass restrito a navegação/controles.
 - Formulário de receitas, despesas e VR/VA; seleção de cartão quando a compra usa crédito.
 - Cadastro visual de cartões e calendário de vencimentos.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro e lucro/km.

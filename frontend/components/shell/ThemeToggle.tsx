@@ -20,6 +20,7 @@ export function ThemeToggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", next === "light" ? "#f8fafc" : "#06080f");
     localStorage.setItem("mg-theme", next);
     window.dispatchEvent(new Event("mg-theme-change"));
   }

@@ -20,6 +20,7 @@ import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 import { formatBRL, formatBRLCompact, formatPercent } from "@/lib/format";
 import {
@@ -85,6 +86,7 @@ export default function VisaoGeralPage() {
 
   return (
     <div className="flex flex-col gap-5 py-2">
+      <PageHeader eyebrow="Painel financeiro" title="Visão geral" description="Saldo, movimentações e próximos compromissos em um único lugar." />
       <BentoGrid>
         {/* ---------- HERO: Saldo do mês ---------- */}
         <GlassCard

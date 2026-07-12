@@ -1,14 +1,14 @@
-/** Paleta e tokens compartilhados dos gráficos (hex, pois Recharts pinta em SVG). */
+/** Paleta compartilhada por CSS variables para acompanhar claro/escuro. */
 export const CHART = {
-  pos: "#34d399",
-  neg: "#fb7185",
-  warn: "#fbbf24",
-  accent: "#818cf8",
-  accent2: "#22d3ee",
-  accent3: "#c084fc",
-  grid: "rgba(255,255,255,0.06)",
-  axis: "#6b7690",
-  ink: "#eef2fb",
+  pos: "var(--color-pos)",
+  neg: "var(--color-neg)",
+  warn: "var(--color-warn)",
+  accent: "var(--color-accent)",
+  accent2: "var(--color-accent-2)",
+  accent3: "var(--color-accent-3)",
+  grid: "var(--color-chart-grid)",
+  axis: "var(--color-ink-muted)",
+  ink: "var(--color-ink)",
 } as const;
 
 /** Sequência de cores para categorias (donut/barras multi-série). */

@@ -15,6 +15,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { CompareBarChart } from "@/components/charts/CompareBarChart";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 import { usePeriodo } from "@/lib/usePeriodo";
 import { getFluxo, fluxoKpis } from "@/lib/mock/fluxo";
@@ -48,6 +49,7 @@ export default function FluxoCaixaPage() {
 
   return (
     <div className="flex flex-col gap-6 py-2">
+      <PageHeader eyebrow="Finanças" title="Fluxo de caixa" description="Compare entradas, saídas e saldo acumulado no período selecionado." />
       {/* ---------- Hero + gráficos principais ---------- */}
       <section aria-labelledby="fluxo-hero" className="flex flex-col gap-4 lg:gap-5">
         <h2 id="fluxo-hero" className="sr-only">

@@ -19,8 +19,8 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        strong ? "ios-glass" : "glass",
-        "relative rounded-[var(--radius-bento)] p-5 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent",
+        strong ? "surface-card-strong" : "surface-card",
+        "relative rounded-[var(--radius-bento)] p-5 transition-all duration-300",
         interactive &&
           "hover:-translate-y-0.5 hover:border-[var(--color-line-strong)]",
         className,
