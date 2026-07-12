@@ -346,7 +346,7 @@ Pesquisa aplicada de boas práticas de dashboards financeiros (2026) para guiar 
 **Tokens obrigatórios:** cores semânticas, tipografia, espaçamento, raios, sombras, larguras de conteúdo e duração de animação em CSS variables. Suportar tema claro/escuro sem duplicar classes por componente. Números financeiros usam algarismos tabulares (`font-variant-numeric: tabular-nums`).
 
 **Layout:**
-- Desktop: sidebar recolhível + cabeçalho com período global e ação principal.
+- Desktop: sidebar agrupada por domínio + cabeçalho compacto com período global e ação principal. Torná-la recolhível permanece melhoria futura.
 - Tablet: sidebar compacta ou drawer.
 - Mobile: navegação inferior com no máximo cinco destinos principais; ações secundárias vão para menu contextual.
 - Conteúdo com largura máxima coerente; grids usam container queries quando o componente precisar funcionar em regiões diferentes.
@@ -371,6 +371,7 @@ Pesquisa aplicada de boas práticas de dashboards financeiros (2026) para guiar 
 - Meta: **WCAG 2.2 nível AA**. Fluxos completos operáveis por teclado, foco visível e não encoberto, ordem de foco lógica, regiões semânticas e anúncios com `aria-live` para resultados assíncronos importantes.
 - Alvos interativos com pelo menos 24×24 CSS px e espaçamento adequado; preferir 44×44 em ações principais no mobile.
 - Respeitar `prefers-reduced-motion`; animações devem explicar mudança de estado, não decorar.
+- Respeitar `prefers-reduced-transparency`; substituir blur por superfície sólida quando solicitado pelo sistema.
 - Contraste AA inclusive em gráficos, placeholders, bordas de campos e estados disabled.
 - Orçamento inicial por rota: JavaScript de cliente minimizado, sem dependências pesadas para utilidades simples; medir LCP, INP e CLS em produção.
 - Carregar gráficos pesados sob demanda; buscar dados em paralelo e usar Suspense/streaming para evitar waterfalls.
@@ -416,8 +417,8 @@ Painéis laterais (`Sheet`) servem para inspeção e edição rápida de transa�
 
 Inspirada no dashboard da Vercel de 2026:
 
-- **Desktop:** sidebar redimensionável e recolhível com `Visão geral`, `Transações`, `Planejamento`, `Cartões`, `Investimentos` e `Uber`. Configurações e ajuda ficam no rodapé.
-- **Mobile:** barra inferior flutuante para `Início`, `Transações`, ação central `Adicionar`, `Cartões` e `Mais`. Respeitar safe areas e alcance com uma mão.
+- **Desktop implementado:** sidebar Liquid Glass agrupada em `Finanças`, `Patrimônio`, `Trabalho` e `Conta`.
+- **Mobile implementado:** barra inferior flutuante com `Início`, `Fluxo`, ação central `Adicionar`, `Cartões` e `Mais`, respeitando safe areas e alcance com uma mão.
 - Exibir primeiro os destinos mais frequentes; módulos avançados não devem competir visualmente com ações diárias.
 - Item ativo tem texto, ícone e contraste — nunca somente uma barra colorida.
 - Abas são usadas apenas para visões irmãs da mesma entidade, com no máximo 5–7 itens no desktop e 3–4 no mobile. O estado ativo fica na URL.
@@ -482,9 +483,12 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 
 - Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com dados mockados.
 - Tema claro/escuro persistido, shell responsivo, superfícies sólidas no conteúdo e Liquid Glass restrito a navegação/controles.
+- Paleta de gráficos baseada em CSS variables, com contraste próprio para temas claro e escuro; `theme-color` do navegador acompanha o tema.
+- Cabeçalhos de página reutilizáveis e navegação desktop agrupada; mobile usa barra inferior de cinco destinos.
 - Formulário de receitas, despesas e VR/VA; seleção de cartão quando a compra usa crédito.
+- Campo monetário reutilizável com prefixo `R$` e preview do cartão/fatura selecionados.
 - Cadastro visual de cartões e calendário de vencimentos.
-- Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro e lucro/km.
+- Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
 - Login Supabase preparado com `@supabase/ssr` e `proxy.ts` do Next.js 16.
 - Configurações de perfil e estrutura inicial de grupo familiar.
 - FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares.
