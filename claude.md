@@ -487,19 +487,23 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Cabeçalhos de página reutilizáveis e navegação desktop agrupada; mobile usa barra inferior de cinco destinos.
 - Formulário de receitas, despesas e VR/VA persistido na Supabase; compras no crédito exigem um cartão real e gravam `credit_card_id`.
 - Campo monetário reutilizável com prefixo `R$` e preview do cartão, fechamento, vencimento, limite e fatura atual.
+- Inputs com prefixo monetário e ícones usam espaçamento estrutural próprio, sem sobrepor conteúdo em temas claro ou escuro.
+- Módulo **Sonhos e Metas** com objetivo, descrição, valor-alvo, saldo atual, aporte fixo ou percentual da renda, data desejada e cenário preferido.
+- Projeções comparativas para poupança, CDB, Tesouro Direto, ações/dividendos e taxa personalizada; hipóteses são editáveis e apresentadas como simulação bruta, não promessa de retorno.
+- Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC; consultor contextual responde perguntas sobre saldo, gastos, aportes, patrimônio e prazo usando somente dados reais da conta.
 - Cadastro de cartões persistido na Supabase e calendário de vencimentos baseado no mês atual.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
 - Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
 - Tour guiado vinculado ao usuário no primeiro login.
 - Configurações de perfil e estrutura inicial de grupo familiar.
 - FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares.
-- Quatro migrations Supabase com constraints, índices, RLS, consentimento LGPD, views `security_invoker`, trigger de perfil e RPC de exclusão endurecida.
+- Cinco migrations Supabase com constraints, índices, RLS, consentimento LGPD, views `security_invoker`, trigger de perfil, metas/eventos e RPCs endurecidas.
 - Build de produção, TypeScript, ESLint e compilação Python validados.
 - Repositório Git privado publicado e sincronizado em `origin/main`.
 
 ### 7.2 Próximos passos prioritários
 
-1. Aplicar `supabase/migrations/202607150001_security_hardening.sql` no projeto Supabase existente e executar novamente o Security Advisor.
+1. Aplicar `supabase/migrations/202607160001_goals_and_events.sql` no projeto Supabase existente e validar RLS do módulo com duas contas.
 2. Persistir perfil, investimentos, planejamento, recorrências, garagem e diário Uber; o backend deve recalcular valores financeiros e de consumo.
 3. Implementar recuperação de senha e reenvio de confirmação de e-mail.
 4. Adicionar políticas familiares que permitam acesso por `household_id` conforme papel, sem ampliar as políticas antes dos fluxos estarem definidos.
@@ -560,4 +564,4 @@ Uma funcionalidade só está pronta quando:
 
 ---
 
-*Última atualização: 12/07/2026. Atualizar a data, o estado implementado e as decisões conforme o projeto evolui.*
+*Última atualização: 15/07/2026. Atualizar a data, o estado implementado e as decisões conforme o projeto evolui.*

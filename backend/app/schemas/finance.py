@@ -238,3 +238,53 @@ class TransactionRead(BaseModel):
     current_installment: int | None
     bill_reference: str | None
     model_config = ConfigDict(from_attributes=True)
+
+
+# --------------- Financial goals ---------------
+
+class FinancialGoalCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    goal_type: Literal["reserve", "vehicle", "home", "travel", "education", "retirement", "other"]
+    description: str | None = Field(default=None, max_length=600)
+    target_amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    current_amount: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
+    contribution_mode: Literal["fixed", "percentage"]
+    contribution_value: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    target_date: date | None = None
+    preferred_scenario: Literal["savings", "cdb", "treasury", "dividends", "custom"] = "cdb"
+    custom_annual_rate: Decimal | None = Field(default=None, ge=0, le=100, max_digits=6, decimal_places=3)
+
+    @model_validator(mode="after")
+    def validate_contribution(self):
+        if self.contribution_mode == "percentage" and self.contribution_value > 100:
+            raise ValueError("contribution_value deve ser no máximo 100 para percentual")
+        if self.preferred_scenario == "custom" and self.custom_annual_rate is None:
+            raise ValueError("custom_annual_rate é obrigatório no cenário personalizado")
+        return self
+
+
+class FinancialGoalUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=80)
+    description: str | None = Field(default=None, max_length=600)
+    target_amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    contribution_mode: Literal["fixed", "percentage"] | None = None
+    contribution_value: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    target_date: date | None = None
+    preferred_scenario: Literal["savings", "cdb", "treasury", "dividends", "custom"] | None = None
+    custom_annual_rate: Decimal | None = Field(default=None, ge=0, le=100, max_digits=6, decimal_places=3)
+    status: Literal["active", "paused", "completed", "cancelled"] | None = None
+
+
+class GoalEventCreate(BaseModel):
+    event_type: Literal["contribution", "withdrawal", "milestone", "note"]
+    amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    description: str | None = Field(default=None, max_length=400)
+    occurred_on: date
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        if self.event_type in {"contribution", "withdrawal"} and self.amount is None:
+            raise ValueError("amount é obrigatório para aporte ou retirada")
+        if self.event_type in {"milestone", "note"} and self.amount is not None:
+            raise ValueError("amount deve ser vazio para marco ou nota")
+        return self

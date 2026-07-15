@@ -170,7 +170,7 @@ export default function ConfiguracoesPage() {
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
                 <input
-                  className="field pl-10"
+                  className="field field-with-leading"
                   type="email"
                   placeholder="voce@email.com"
                 />
@@ -181,7 +181,7 @@ export default function ConfiguracoesPage() {
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
                 <input
-                  className="field pl-10"
+                  className="field field-with-leading"
                   type="tel"
                   placeholder="(00) 00000-0000"
                 />

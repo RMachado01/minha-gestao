@@ -9,14 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import current_user_id
 from app.db.session import get_db
 from app.models.entities import (
-    Category, CreditCard, CreditCardBill, Investment, InvestmentSnapshot,
-    RecurrenceRule, Transaction, UberDailyEntry, Vehicle,
+    Category, CreditCard, CreditCardBill, FinancialGoal, GoalEvent, Investment,
+    InvestmentSnapshot, RecurrenceRule, Transaction, UberDailyEntry, Vehicle,
 )
 from app.schemas.finance import (
     CategoryCreate, CategoryRead,
     CreditCardCreate, CreditCardBillRead,
     InvestmentCreate, InvestmentRead,
     InvestmentSnapshotCreate, InvestmentSnapshotRead,
+    FinancialGoalCreate, FinancialGoalUpdate, GoalEventCreate,
     ProfileUpdate,
     RecurrenceRuleCreate, RecurrenceRuleRead,
     TransactionCreate,
@@ -255,6 +256,71 @@ async def list_snapshots(inv_id: UUID, user_id: UserId, db: Db) -> list[Investme
 
 
 # ---------------------------------------------------------------------------
+# Financial goals and timeline
+# ---------------------------------------------------------------------------
+
+@router.post("/goals", status_code=status.HTTP_201_CREATED, tags=["goals"])
+async def create_goal(payload: FinancialGoalCreate, user_id: UserId, db: Db) -> dict:
+    goal = FinancialGoal(user_id=UUID(user_id), **payload.model_dump())
+    db.add(goal)
+    await db.commit()
+    await db.refresh(goal)
+    return _goal_dict(goal)
+
+
+@router.get("/goals", tags=["goals"])
+async def list_goals(
+    user_id: UserId,
+    db: Db,
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> list[dict]:
+    stmt = select(FinancialGoal).where(FinancialGoal.user_id == UUID(user_id))
+    if status_filter:
+        stmt = stmt.where(FinancialGoal.status == status_filter)
+    result = await db.execute(stmt.order_by(FinancialGoal.created_at.desc()))
+    return [_goal_dict(goal) for goal in result.scalars().all()]
+
+
+@router.patch("/goals/{goal_id}", tags=["goals"])
+async def update_goal(
+    goal_id: UUID, payload: FinancialGoalUpdate, user_id: UserId, db: Db,
+) -> dict:
+    goal = await _get_or_404(db, FinancialGoal, goal_id, UUID(user_id))
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(goal, field, value)
+    await db.commit()
+    await db.refresh(goal)
+    return _goal_dict(goal)
+
+
+@router.get("/goals/{goal_id}/events", tags=["goals"])
+async def list_goal_events(goal_id: UUID, user_id: UserId, db: Db) -> list[dict]:
+    await _get_or_404(db, FinancialGoal, goal_id, UUID(user_id))
+    result = await db.execute(
+        select(GoalEvent)
+        .where(GoalEvent.goal_id == goal_id, GoalEvent.user_id == UUID(user_id))
+        .order_by(GoalEvent.occurred_on.desc())
+    )
+    return [_goal_event_dict(event) for event in result.scalars().all()]
+
+
+@router.post("/goals/{goal_id}/events", status_code=status.HTTP_201_CREATED, tags=["goals"])
+async def create_goal_event(
+    goal_id: UUID, payload: GoalEventCreate, user_id: UserId, db: Db,
+) -> dict:
+    goal = await _get_or_404(db, FinancialGoal, goal_id, UUID(user_id))
+    event = GoalEvent(goal_id=goal_id, user_id=UUID(user_id), **payload.model_dump())
+    if payload.event_type == "contribution":
+        goal.current_amount += payload.amount
+    elif payload.event_type == "withdrawal":
+        goal.current_amount = max(0, goal.current_amount - payload.amount)
+    db.add(event)
+    await db.commit()
+    await db.refresh(event)
+    return _goal_event_dict(event)
+
+
+# ---------------------------------------------------------------------------
 # Vehicles
 # ---------------------------------------------------------------------------
 
@@ -420,4 +486,33 @@ def _uber_entry_dict(e: UberDailyEntry) -> dict:
         "other_costs": str(e.other_costs),
         "net_profit": str(e.net_profit),
         "idempotency_key": e.idempotency_key,
+    }
+
+
+def _goal_dict(goal: FinancialGoal) -> dict:
+    return {
+        "id": str(goal.id),
+        "user_id": str(goal.user_id),
+        "name": goal.name,
+        "goal_type": goal.goal_type,
+        "description": goal.description,
+        "target_amount": str(goal.target_amount),
+        "current_amount": str(goal.current_amount),
+        "contribution_mode": goal.contribution_mode,
+        "contribution_value": str(goal.contribution_value),
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "preferred_scenario": goal.preferred_scenario,
+        "custom_annual_rate": str(goal.custom_annual_rate) if goal.custom_annual_rate is not None else None,
+        "status": goal.status,
+    }
+
+
+def _goal_event_dict(event: GoalEvent) -> dict:
+    return {
+        "id": str(event.id),
+        "goal_id": str(event.goal_id),
+        "event_type": event.event_type,
+        "amount": str(event.amount) if event.amount is not None else None,
+        "description": event.description,
+        "occurred_on": event.occurred_on.isoformat(),
     }

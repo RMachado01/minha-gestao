@@ -11,6 +11,7 @@ import {
   List,
   CalendarCheck,
   Repeat,
+  Goal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/recorrentes", label: "Recorrentes", icon: Repeat, group: "financas" },
   { href: "/cartoes", label: "Cartões", icon: CreditCard, group: "financas" },
   { href: "/investimentos", label: "Investimentos", icon: TrendingUp, group: "patrimonio" },
+  { href: "/metas", label: "Sonhos e Metas", icon: Goal, group: "patrimonio" },
   { href: "/uber", label: "Uber", icon: Car, group: "trabalho", uberOnly: true },
   { href: "/garagem", label: "Garagem", icon: Warehouse, group: "trabalho", garagemOnly: true },
   { href: "/configuracoes", label: "Configurações", icon: Settings, group: "conta" },

@@ -236,6 +236,9 @@ html[data-theme="light"] .ios-glass {
 }
 .field::placeholder { color: var(--color-ink-muted); }
 .field:hover { border-color: var(--color-line-strong); }
+.field.field-with-leading { padding-left: 2.75rem; }
+.field.field-with-currency { padding-left: 3.35rem; }
+.field.field-with-suffix { padding-right: 3.25rem; }
 select.field {
   appearance: none;
   padding-right: 2.6rem;

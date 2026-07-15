@@ -41,8 +41,9 @@ Substitua `[senha]` pela senha que criou. Esse é o `DATABASE_URL` do backend (t
    2. `supabase/migrations/202607120002_complete_schema.sql`
    3. `supabase/migrations/202607130001_lgpd_consent_log.sql`
    4. `supabase/migrations/202607150001_security_hardening.sql`
+   5. `supabase/migrations/202607160001_goals_and_events.sql`
 3. Não cole apenas o caminho do arquivo: o SQL Editor precisa receber o conteúdo SQL.
-4. Verifique em **Table Editor** que as tabelas foram criadas (`profiles`, `transactions`, `credit_cards`, `vehicles`, `uber_daily_entries`, `categories`, `recurrence_rules`, `investments`, etc.).
+4. Verifique em **Table Editor** que as tabelas foram criadas (`profiles`, `transactions`, `credit_cards`, `vehicles`, `uber_daily_entries`, `categories`, `recurrence_rules`, `investments`, `financial_goals`, `goal_events`, etc.).
 5. Em **Database > Security Advisor**, confirme que não existem alertas `Security Definer View` para as views `vw_*`.
 
 **Opção B — Supabase CLI (para quem prefere terminal):**
@@ -216,6 +217,7 @@ Após o deploy, copie a URL do backend e atualize `NEXT_PUBLIC_API_URL` na Verce
 ## Parte 6: Checklist final
 
 - [ ] Migrations aplicadas no Supabase (tabelas + RLS + trigger de perfil)
+- [ ] Módulo de metas validado com criação, aporte, retirada e leitura isolada entre duas contas
 - [ ] Email confirmation ativado em Auth > Providers > Email
 - [ ] Redirect URLs configuradas no Supabase para localhost + produção
 - [ ] `.env.local` do frontend preenchido

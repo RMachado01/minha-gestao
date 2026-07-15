@@ -190,3 +190,31 @@ class InvestmentSnapshot(UUIDMixin, TimestampMixin, Base):
     snapshot_date: Mapped[date] = mapped_column(Date)
     current_value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     investment: Mapped[Investment] = relationship(back_populates="snapshots")
+
+
+class FinancialGoal(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "financial_goals"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    goal_type: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str | None] = mapped_column(String(600))
+    target_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    current_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    contribution_mode: Mapped[str] = mapped_column(String(12))
+    contribution_value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    target_date: Mapped[date | None] = mapped_column(Date)
+    preferred_scenario: Mapped[str] = mapped_column(String(20), default="cdb")
+    custom_annual_rate: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
+    status: Mapped[str] = mapped_column(String(12), default="active")
+    events: Mapped[list["GoalEvent"]] = relationship(back_populates="goal")
+
+
+class GoalEvent(UUIDMixin, Base):
+    __tablename__ = "goal_events"
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("financial_goals.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    description: Mapped[str | None] = mapped_column(String(400))
+    occurred_on: Mapped[date] = mapped_column(Date, index=True)
+    goal: Mapped[FinancialGoal] = relationship(back_populates="events")
