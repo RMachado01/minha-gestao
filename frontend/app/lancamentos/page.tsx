@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowDownCircle, ArrowUpCircle, Check, CreditCard, LoaderCircle, Utensils } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowDownCircle, ArrowRight, ArrowUpCircle, Check, CheckCircle2, CreditCard, LoaderCircle, Plus, Sparkles, Utensils } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MoneyInput } from "@/components/forms/MoneyInput";
@@ -20,6 +22,8 @@ const tipos = [
 
 export default function LancamentosPage() {
   const today = new Date().toISOString().slice(0, 10);
+  const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const { toast } = useToast();
   const { cards, loading: loadingCards, error: cardsError } = useCreditCards();
   const [tipo, setTipo] = useState<Tipo>("expense");
@@ -28,6 +32,7 @@ export default function LancamentosPage() {
   const [error, setError] = useState("");
   const [payment, setPayment] = useState("pix");
   const [selectedCardId, setSelectedCardId] = useState("");
+  const [lastTransaction, setLastTransaction] = useState<{ id: string; description: string; amount: number } | null>(null);
   const selectedCard = cards.find((card) => card.id === selectedCardId);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -67,12 +72,13 @@ export default function LancamentosPage() {
       return;
     }
 
-    const { error: insertError } = await supabase.from("transactions").insert({
+    const description = String(data.get("description")).trim();
+    const { data: inserted, error: insertError } = await supabase.from("transactions").insert({
       user_id: authData.user.id,
       type: tipo,
       amount,
       occurred_on: String(data.get("date")),
-      description: String(data.get("description")).trim(),
+      description,
       category: tipo === "benefit" ? "Alimentação" : String(data.get("category")),
       payment_method: tipo === "benefit" ? "benefit" : tipo === "expense" ? payment : "pix",
       benefit_kind: tipo === "benefit" ? String(data.get("benefit")) : null,
@@ -81,9 +87,9 @@ export default function LancamentosPage() {
       origin: tipo === "expense" ? "expense" : null,
       status: tipo === "expense" ? "pending" : "received",
       idempotency_key: crypto.randomUUID(),
-    });
+    }).select("id").single();
 
-    if (insertError) {
+    if (insertError || !inserted) {
       setError("Não foi possível salvar o lançamento. Tente novamente.");
       setSaving(false);
       return;
@@ -94,6 +100,7 @@ export default function LancamentosPage() {
     setSelectedCardId("");
     setSaved(true);
     setSaving(false);
+    setLastTransaction({ id: inserted.id, description, amount });
     toast("Lançamento salvo com sucesso!", "success");
     setTimeout(() => setSaved(false), 2500);
   }
@@ -111,7 +118,6 @@ export default function LancamentosPage() {
             <label className="field-label">Valor<MoneyInput name="amount" placeholder="0,00" required /></label>
             <label className="field-label">Data do lançamento<input className="field" name="date" type="date" defaultValue={today} required /></label>
             {tipo === "benefit" ? <label className="field-label">Categoria<input type="hidden" name="category" value="Alimentação" /><span className="field flex items-center bg-amber-400/10 text-warn">Alimentação · definida automaticamente</span></label> : <label className="field-label">Categoria<select className="field" name="category"><option>Alimentação</option><option>Moradia</option><option>Transporte</option><option>Saúde</option><option>Salário</option><option>Benefícios</option></select></label>}
-            <label className="field-label">Conta ou carteira<select className="field" name="account"><option>Conta principal</option><option>Dinheiro</option><option>Vale-refeição</option><option>Vale-alimentação</option></select></label>
             {tipo === "benefit" && <label className="field-label">Tipo de benefício<select className="field" name="benefit"><option value="vr">VR — Vale-refeição</option><option value="va">VA — Vale-alimentação</option><option value="flex">VR/VA flexível</option></select></label>}
             {tipo === "expense" && <label className="field-label">Forma de pagamento<select className="field" name="payment" value={payment} onChange={(event) => setPayment(event.target.value)}><option value="pix">Débito / Pix</option><option value="credit">Cartão de crédito</option><option value="cash">Dinheiro</option><option value="benefit">VR / VA</option></select></label>}
             {tipo === "expense" && payment === "credit" && <div className="sm:col-span-2"><label className="field-label">Em qual cartão foi feita a compra?<select className="field" name="credit_card_id" required disabled={loadingCards || cards.length === 0} value={selectedCardId} onChange={(event) => setSelectedCardId(event.target.value)}><option value="">{loadingCards ? "Carregando seus cartões..." : cards.length === 0 ? "Nenhum cartão cadastrado" : "Selecione o cartão usado"}</option>{cards.map((card) => <option key={card.id} value={card.id}>{card.nickname} · {card.brand} · vence dia {card.due_day}</option>)}</select><span className="field-help">A despesa ficará vinculada ao cartão e será considerada na fatura correspondente.</span></label>{cardsError && <p className="mt-2 text-sm text-neg">{cardsError}</p>}{!loadingCards && cards.length === 0 && <Link href="/cartoes" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline"><CreditCard className="size-4" />Cadastrar um cartão primeiro</Link>}{selectedCard && <div className="surface-card mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"><div className="flex items-center gap-3"><span className="size-3 rounded-full" style={{ background: selectedCard.color ?? "var(--color-accent)" }} /><div><p className="text-sm font-semibold text-ink">{selectedCard.nickname} · {selectedCard.brand}</p><p className="text-xs text-ink-muted">Fecha dia {selectedCard.closing_day} · vence dia {selectedCard.due_day}</p></div></div><div className="text-right"><p className="text-xs text-ink-muted">Fatura atual</p><p className="tnum text-sm font-semibold text-ink">{selectedCard.current_bill.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p><p className="mt-0.5 text-[11px] text-ink-muted">Limite {selectedCard.total_limit.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div></div>}</div>}
@@ -125,6 +131,46 @@ export default function LancamentosPage() {
           <div className="mt-5 space-y-4 text-sm"><div className="flex justify-between border-b border-[var(--color-line)] pb-3"><span className="text-ink-muted">Tipo</span><span className="font-medium text-ink">{tipos.find((item) => item.id === tipo)?.label}</span></div><div className="flex justify-between border-b border-[var(--color-line)] pb-3"><span className="text-ink-muted">Status inicial</span><span className="font-medium text-warn">Pendente</span></div><p className="rounded-2xl bg-accent/10 p-4 text-ink-soft">A API usará uma chave de idempotência para impedir lançamentos duplicados em caso de clique duplo ou reconexão.</p></div>
         </GlassCard>
       </BentoGrid>
+      <AnimatePresence>
+        {lastTransaction && (
+          <motion.div
+            className="fixed inset-0 z-[100] grid place-items-center bg-black/55 p-4 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="presentation"
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="launch-success-title"
+              className="liquid-glass-hero relative w-full max-w-md overflow-hidden rounded-[2rem] p-7 text-center sm:p-9"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.92 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 340, damping: 26 }}
+            >
+              <motion.div
+                className="mx-auto grid size-20 place-items-center rounded-full bg-emerald-400/15 text-pos"
+                initial={reduceMotion ? undefined : { scale: 0, rotate: -25 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 420, damping: 18, delay: 0.08 }}
+              >
+                <CheckCircle2 className="size-10" strokeWidth={2.2} />
+              </motion.div>
+              <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+                <p className="mt-5 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-[.18em] text-accent"><Sparkles className="size-3.5" />Tudo certo</p>
+                <h2 id="launch-success-title" className="mt-2 text-2xl font-semibold text-ink">Lançamento salvo!</h2>
+                <p className="mt-2 text-sm text-ink-soft"><strong className="font-semibold text-ink">{lastTransaction.description}</strong> entrou no seu histórico com o valor de <span className="tnum font-semibold text-ink">{lastTransaction.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>.</p>
+              </motion.div>
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                <button type="button" className="btn-primary" onClick={() => router.push(`/transacoes?created=${lastTransaction.id}`)}>Ver no histórico<ArrowRight className="size-4" /></button>
+                <button type="button" className="rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm font-semibold text-ink-soft transition hover:border-accent hover:text-ink" onClick={() => setLastTransaction(null)}><Plus className="mr-1.5 inline size-4" />Novo lançamento</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

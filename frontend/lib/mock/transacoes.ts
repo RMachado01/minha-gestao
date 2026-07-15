@@ -3,7 +3,7 @@ export interface Transacao {
   descricao: string;
   valor: number;
   data: string;
-  tipo: "income" | "expense";
+  tipo: "income" | "expense" | "benefit";
   categoria: string;
   conta: string;
   status: "pendente" | "pago" | "recebido";

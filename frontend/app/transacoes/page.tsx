@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowUpCircle,
   ArrowDownCircle,
@@ -11,6 +13,8 @@ import {
   Trash2,
   X,
   Check,
+  LoaderCircle,
+  RefreshCw,
 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -19,9 +23,10 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MoneyInput } from "@/components/forms/MoneyInput";
 
-import { transacoes as transacoesMock, type Transacao } from "@/lib/data/empty";
+import type { Transacao } from "@/lib/data/empty";
 import { formatBRL } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
+import { createClient } from "@/lib/supabase/client";
 
 const categoriasList = [
   "Alimentação",
@@ -53,19 +58,90 @@ const FORMA_LABEL: Record<string, string> = {
   benefit: "Benefício",
 };
 
+interface DbTransaction {
+  id: string;
+  description: string;
+  amount: number | string;
+  occurred_on: string;
+  type: "income" | "expense" | "benefit";
+  category: string;
+  status: "pending" | "paid" | "received";
+  recurring: boolean;
+  payment_method: "pix" | "credit" | "cash" | "benefit" | null;
+}
+
+const STATUS_FROM_DB: Record<DbTransaction["status"], Transacao["status"]> = {
+  pending: "pendente",
+  paid: "pago",
+  received: "recebido",
+};
+
+const STATUS_TO_DB: Record<Transacao["status"], DbTransaction["status"]> = {
+  pendente: "pending",
+  pago: "paid",
+  recebido: "received",
+};
+
+function toTransacao(item: DbTransaction): Transacao {
+  return {
+    id: item.id,
+    descricao: item.description,
+    valor: Number(item.amount),
+    data: item.occurred_on,
+    tipo: item.type,
+    categoria: item.category,
+    conta: "Conta principal",
+    status: STATUS_FROM_DB[item.status],
+    recorrente: item.recurring,
+    formaPagamento: item.payment_method ?? (item.type === "benefit" ? "benefit" : "pix"),
+  };
+}
+
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
 export default function TransacoesPage() {
-  const [lista, setLista] = useState<Transacao[]>([...transacoesMock]);
+  const searchParams = useSearchParams();
+  const reduceMotion = useReducedMotion();
+  const createdId = searchParams.get("created");
+  const [lista, setLista] = useState<Transacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [tipo, setTipo] = useState<string>("");
   const [categoria, setCategoria] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
   const { toast } = useToast();
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  async function loadTransactions() {
+    const supabase = createClient();
+    if (!supabase) {
+      setLoadError("Supabase não configurado.");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError("");
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id,description,amount,occurred_on,type,category,status,recurring,payment_method")
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) {
+      setLoadError("Não foi possível carregar o histórico. Tente novamente.");
+    } else {
+      setLista(((data ?? []) as DbTransaction[]).map(toTransacao));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadTransactions(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const categorias = useMemo(
     () => Array.from(new Set(lista.map((t) => t.categoria))).sort(),
@@ -93,13 +169,36 @@ export default function TransacoesPage() {
   );
   const saldo = totalEntradas - totalSaidas;
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
+    const supabase = createClient();
+    if (!supabase) return;
+    const { error } = await supabase.from("transactions").delete().eq("id", id);
+    if (error) {
+      toast("Não foi possível excluir a transação.", "error");
+      return;
+    }
     setLista((prev) => prev.filter((t) => t.id !== id));
     setConfirmDelete(null);
     toast("Transação excluída", "warning");
   }
 
-  function handleSaveEdit(updated: Transacao) {
+  async function handleSaveEdit(updated: Transacao) {
+    const supabase = createClient();
+    if (!supabase) return;
+    const { error } = await supabase.from("transactions").update({
+      description: updated.descricao.trim(),
+      amount: updated.valor,
+      occurred_on: updated.data,
+      type: updated.tipo,
+      category: updated.categoria,
+      status: STATUS_TO_DB[updated.status],
+      recurring: updated.recorrente,
+      payment_method: updated.formaPagamento,
+    }).eq("id", updated.id);
+    if (error) {
+      toast("Não foi possível atualizar a transação.", "error");
+      return;
+    }
     setLista((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditando(null);
     toast("Transação atualizada com sucesso!", "success");
@@ -119,6 +218,13 @@ export default function TransacoesPage() {
         description="Navegue pelo histórico completo de entradas e saídas. Clique no lápis para editar ou corrigir um lançamento."
       />
 
+      {loadError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-neg">
+          <span>{loadError}</span>
+          <button type="button" onClick={() => void loadTransactions()} className="inline-flex items-center gap-2 font-semibold"><RefreshCw className="size-4" />Tentar novamente</button>
+        </div>
+      )}
+
       {/* Filter bar */}
       <div className="gz-rise flex flex-wrap items-center gap-3" style={{ animationDelay: "0ms" }}>
         <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] px-3 py-1.5 text-sm">
@@ -132,6 +238,7 @@ export default function TransacoesPage() {
             <option value="">Todas</option>
             <option value="income">Entradas</option>
             <option value="expense">Saídas</option>
+            <option value="benefit">VR / VA</option>
           </select>
         </div>
 
@@ -227,20 +334,23 @@ export default function TransacoesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtrada.map((t) => (
-                <tr
+              {filtrada.map((t, index) => (
+                <motion.tr
                   key={t.id}
-                  className="group border-t border-[var(--color-line)] transition-colors hover:bg-white/[0.03]"
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: reduceMotion ? 0 : Math.min(index * 0.025, 0.3), duration: reduceMotion ? 0.01 : 0.28 }}
+                  className={`group border-t border-[var(--color-line)] transition-colors hover:bg-white/[0.03] ${createdId === t.id ? "bg-emerald-400/10" : ""}`}
                 >
                   <td className="tnum py-3 pr-3 text-ink-soft">{formatDate(t.data)}</td>
                   <td className="py-3 px-3 font-medium text-ink">{t.descricao}</td>
                   <td className="py-3 px-3 text-ink-soft">{t.categoria}</td>
                   <td
                     className={`tnum py-3 px-3 text-right font-semibold ${
-                      t.tipo === "income" ? "text-pos" : "text-neg"
+                      t.tipo === "income" ? "text-pos" : t.tipo === "benefit" ? "text-warn" : "text-neg"
                     }`}
                   >
-                    {t.tipo === "income" ? "+" : "−"} {formatBRL(t.valor)}
+                    {t.tipo === "expense" ? "−" : "+"} {formatBRL(t.valor)}
                   </td>
                   <td className="py-3 px-3 text-center">
                     <span
@@ -283,9 +393,12 @@ export default function TransacoesPage() {
                       )}
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
-              {filtrada.length === 0 && (
+              {loading && (
+                <tr><td colSpan={7} className="py-12 text-center text-ink-muted"><LoaderCircle className="mx-auto mb-2 size-5 animate-spin text-accent" />Carregando seu histórico...</td></tr>
+              )}
+              {!loading && filtrada.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-ink-muted">
                     Nenhuma transação encontrada com os filtros selecionados.
@@ -383,6 +496,7 @@ function EditPanel({
               >
                 <option value="income">Receita</option>
                 <option value="expense">Despesa</option>
+                <option value="benefit">VR / VA</option>
               </select>
             </label>
 
