@@ -494,6 +494,8 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Projeções comparativas para poupança, CDB, Tesouro Direto, ações/dividendos e taxa personalizada; hipóteses são editáveis e apresentadas como simulação bruta, não promessa de retorno.
 - Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC; consultor contextual responde perguntas sobre saldo, gastos, aportes, patrimônio e prazo usando somente dados reais da conta.
 - Cadastro de cartões persistido na Supabase e calendário de vencimentos baseado no mês atual.
+- Cartões existentes podem ser editados ou arquivados com confirmação; a remoção preserva compras e faturas históricas vinculadas.
+- A cor de destaque personalizada controla gradientes de botões, navegação e estados interativos por meio de tokens derivados.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
 - Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
 - Tour guiado vinculado ao usuário no primeiro login.

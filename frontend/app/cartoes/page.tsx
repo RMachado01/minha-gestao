@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import {
   CreditCard,
   Wallet,
   CalendarClock,
   Wifi,
   AlertTriangle,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -16,12 +19,13 @@ import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
 import { BillCalendar } from "@/components/cards/BillCalendar";
 import { CardRegistration } from "@/components/cards/CardRegistration";
+import { CardManagementDialog } from "@/components/cards/CardManagementDialog";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 import {
   faturasHistorico,
   type Cartao,
 } from "@/lib/data/empty";
-import { useCreditCards } from "@/lib/supabase/useCreditCards";
+import { useCreditCards, type CreditCardRecord } from "@/lib/supabase/useCreditCards";
 
 /** Limiar de uso do limite que dispara sinal de atenção. */
 const ALERTA_USO = 0.7;
@@ -60,7 +64,7 @@ function StatusBadge({ status }: { status: Cartao["status"] }) {
 }
 
 /** Cartão físico + medidor de limite usado x disponível. */
-function CartaoItem({ cartao, delay }: { cartao: Cartao; delay: number }) {
+function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Cartao; record: CreditCardRecord; delay: number; onEdit: (card: CreditCardRecord) => void; onDelete: (card: CreditCardRecord) => void }) {
   const uso = cartao.limiteUsado / cartao.limiteTotal;
   const disponivel = cartao.limiteTotal - cartao.limiteUsado;
   const alerta = uso > ALERTA_USO;
@@ -186,6 +190,11 @@ function CartaoItem({ cartao, delay }: { cartao: Cartao; delay: number }) {
             Uso acima de {Math.round(ALERTA_USO * 100)}% do limite
           </div>
         )}
+
+        <div className="mt-4 flex gap-2 border-t border-[var(--color-line)] pt-4">
+          <button type="button" onClick={() => onEdit(record)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-accent hover:bg-accent/10 hover:text-ink" aria-label={`Editar cartão ${cartao.apelido}`}><Pencil className="size-3.5" />Editar</button>
+          <button type="button" onClick={() => onDelete(record)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-400/20 px-3 py-2 text-xs font-semibold text-neg transition hover:bg-rose-400/10" aria-label={`Excluir cartão ${cartao.apelido}`}><Trash2 className="size-3.5" />Excluir</button>
+        </div>
       </div>
     </GlassCard>
   );
@@ -193,6 +202,8 @@ function CartaoItem({ cartao, delay }: { cartao: Cartao; delay: number }) {
 
 export default function CartoesPage() {
   const { cards: storedCards, loading, refresh } = useCreditCards();
+  const [managedCard, setManagedCard] = useState<CreditCardRecord | null>(null);
+  const [dialogMode, setDialogMode] = useState<"edit" | "delete">("edit");
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
   const cartoes: Cartao[] = storedCards.map((card) => ({
     id: card.id,
@@ -328,7 +339,14 @@ export default function CartoesPage() {
         />
         <BentoGrid>
           {cartoes.map((cartao, i) => (
-            <CartaoItem key={cartao.id} cartao={cartao} delay={i * 90} />
+            <CartaoItem
+              key={cartao.id}
+              cartao={cartao}
+              record={storedCards[i]}
+              delay={i * 90}
+              onEdit={(card) => { setManagedCard(card); setDialogMode("edit"); }}
+              onDelete={(card) => { setManagedCard(card); setDialogMode("delete"); }}
+            />
           ))}
         </BentoGrid>
       </div>
@@ -360,6 +378,7 @@ export default function CartoesPage() {
           height={280}
         />
       </GlassCard>
+      <CardManagementDialog key={`${managedCard?.id ?? "none"}-${dialogMode}`} card={managedCard} mode={dialogMode} onClose={() => setManagedCard(null)} onChanged={refresh} />
     </section>
   );
 }

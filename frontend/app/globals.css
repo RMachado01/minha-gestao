@@ -27,8 +27,8 @@
 
   /* Marca — Verde Palmeiras + branco */
   --color-accent: #006b3f;
-  --color-accent-2: #00a86b;
-  --color-accent-3: #4caf50;
+  --color-accent-2: color-mix(in oklab, var(--color-accent) 78%, white);
+  --color-accent-3: color-mix(in oklab, var(--color-accent) 66%, white);
 
   /* Bordas */
   --color-line: rgba(255, 255, 255, 0.08);
@@ -65,8 +65,8 @@ html[data-theme="light"] {
   --color-neg: #d63f5c;
   --color-warn: #a96200;
   --color-accent: #006b3f;
-  --color-accent-2: #00875a;
-  --color-accent-3: #2e7d32;
+  --color-accent-2: color-mix(in oklab, var(--color-accent) 82%, white);
+  --color-accent-3: color-mix(in oklab, var(--color-accent) 70%, white);
 }
 
 body {
@@ -256,8 +256,8 @@ input[type="checkbox"] { accent-color: var(--color-accent); }
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
   border-radius: .875rem; padding: .72rem 1rem; font-weight: 650;
-  color: white; background: linear-gradient(135deg, #006b3f, #00a86b);
-  box-shadow: 0 10px 28px -14px rgba(0, 107, 63, .7);
+  color: white; background: linear-gradient(135deg, color-mix(in oklab, var(--color-accent) 76%, black), var(--color-accent-2));
+  box-shadow: 0 10px 28px -14px color-mix(in oklab, var(--color-accent) 72%, transparent);
   transition: transform .18s, filter .18s;
 }
 .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }

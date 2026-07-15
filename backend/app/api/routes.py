@@ -128,6 +128,13 @@ async def update_credit_card(card_id: UUID, payload: CreditCardCreate, user_id: 
     return _card_dict(card)
 
 
+@router.delete("/credit-cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["cards"])
+async def archive_credit_card(card_id: UUID, user_id: UserId, db: Db) -> None:
+    card = await _get_or_404(db, CreditCard, card_id, UUID(user_id))
+    card.active = False
+    await db.commit()
+
+
 # ---------------------------------------------------------------------------
 # Categories
 # ---------------------------------------------------------------------------
