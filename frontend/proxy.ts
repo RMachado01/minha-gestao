@@ -8,9 +8,11 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, key, { cookies: { getAll: () => request.cookies.getAll(), setAll: (items) => { items.forEach(({ name, value }) => request.cookies.set(name, value)); response = NextResponse.next({ request }); items.forEach(({ name, value, options }) => response.cookies.set(name, value, options)); } } });
   const { data: { user } } = await supabase.auth.getUser();
-  const isPublic = request.nextUrl.pathname === "/login" || request.nextUrl.pathname.startsWith("/auth/");
+  const pub = ["/login", "/cadastro", "/termos", "/privacidade"];
+  const isPublic = pub.includes(request.nextUrl.pathname) || request.nextUrl.pathname.startsWith("/auth/");
+  const isAuthEntry = request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/cadastro";
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", request.url));
-  if (user && request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
+  if (user && isAuthEntry) return NextResponse.redirect(new URL("/", request.url));
   return response;
 }
 

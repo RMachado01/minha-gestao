@@ -6,5 +6,5 @@ export async function createClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return null;
   const store = await cookies();
-  return createServerClient(url, key, { cookies: { getAll: () => store.getAll(), setAll: (items) => { try { items.forEach(({ name, value, options }) => store.set(name, value, options)); } catch {} } } });
+  return createServerClient(url, key, { cookies: { getAll: () => store.getAll(), setAll: (items) => { try { items.forEach(({ name, value, options }) => store.set(name, value, options)); } catch (e) { console.warn("[supabase] cookie setAll failed:", e); } } } });
 }

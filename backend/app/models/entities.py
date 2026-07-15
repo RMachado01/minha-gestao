@@ -15,6 +15,44 @@ class TransactionType(str, enum.Enum):
     benefit = "benefit"
 
 
+class CategoryType(str, enum.Enum):
+    income = "income"
+    expense = "expense"
+
+
+class RecurrenceType(str, enum.Enum):
+    subscription = "subscription"
+    installment = "installment"
+    fixed_bill = "fixed_bill"
+
+
+class InvestmentType(str, enum.Enum):
+    renda_fixa = "renda_fixa"
+    renda_variavel = "renda_variavel"
+    fundo = "fundo"
+    cripto = "cripto"
+    outro = "outro"
+
+
+class BillStatus(str, enum.Enum):
+    open = "open"
+    closed = "closed"
+    paid = "paid"
+
+
+class TransactionOrigin(str, enum.Enum):
+    fixed_income = "fixed_income"
+    variable_income = "variable_income"
+    expense = "expense"
+    recurring_expense = "recurring_expense"
+
+
+class TransactionStatus(str, enum.Enum):
+    pending = "pending"
+    paid = "paid"
+    received = "received"
+
+
 class Powertrain(str, enum.Enum):
     combustion = "combustion"
     hybrid = "hybrid"
@@ -28,18 +66,49 @@ class User(UUIDMixin, TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
 
 
+class Category(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "categories"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    type: Mapped[CategoryType] = mapped_column(Enum(CategoryType))
+    color: Mapped[str | None] = mapped_column(String(20))
+    icon: Mapped[str | None] = mapped_column(String(40))
+
+
+class RecurrenceRule(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "recurrence_rules"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    description: Mapped[str] = mapped_column(String(240))
+    type: Mapped[RecurrenceType] = mapped_column(Enum(RecurrenceType))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    day_of_month: Mapped[int] = mapped_column(Integer)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    total_installments: Mapped[int | None] = mapped_column(Integer)
+    current_installment: Mapped[int | None] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    category_id: Mapped[UUID | None] = mapped_column(ForeignKey("categories.id"))
+
+
 class Transaction(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "transactions"
     __table_args__ = (UniqueConstraint("user_id", "idempotency_key"),)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     credit_card_id: Mapped[UUID | None] = mapped_column(ForeignKey("credit_cards.id"), index=True)
+    category_id: Mapped[UUID | None] = mapped_column(ForeignKey("categories.id"))
+    recurrence_id: Mapped[UUID | None] = mapped_column(ForeignKey("recurrence_rules.id"))
     type: Mapped[TransactionType] = mapped_column(Enum(TransactionType))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     occurred_on: Mapped[date] = mapped_column(Date, index=True)
     description: Mapped[str] = mapped_column(String(240))
     category: Mapped[str] = mapped_column(String(80))
+    origin: Mapped[str | None] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(10), default="pending")
     benefit_kind: Mapped[str | None] = mapped_column(String(20))
     recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    installments_total: Mapped[int | None] = mapped_column(Integer)
+    current_installment: Mapped[int | None] = mapped_column(Integer)
+    bill_reference: Mapped[str | None] = mapped_column(String(7))
     idempotency_key: Mapped[str] = mapped_column(String(80))
 
 
@@ -93,3 +162,31 @@ class CreditCard(UUIDMixin, TimestampMixin, Base):
     due_day: Mapped[int] = mapped_column(Integer)
     color: Mapped[str | None] = mapped_column(String(20))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class CreditCardBill(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "credit_card_bills"
+    __table_args__ = (UniqueConstraint("credit_card_id", "reference_month"),)
+    credit_card_id: Mapped[UUID] = mapped_column(ForeignKey("credit_cards.id"), index=True)
+    reference_month: Mapped[str] = mapped_column(String(7))
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    status: Mapped[BillStatus] = mapped_column(Enum(BillStatus), default=BillStatus.open)
+
+
+class Investment(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "investments"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    type: Mapped[InvestmentType] = mapped_column(Enum(InvestmentType))
+    invested_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    application_date: Mapped[date] = mapped_column(Date)
+    institution: Mapped[str] = mapped_column(String(120))
+    snapshots: Mapped[list["InvestmentSnapshot"]] = relationship(back_populates="investment")
+
+
+class InvestmentSnapshot(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "investment_snapshots"
+    investment_id: Mapped[UUID] = mapped_column(ForeignKey("investments.id"), index=True)
+    snapshot_date: Mapped[date] = mapped_column(Date)
+    current_value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    investment: Mapped[Investment] = relationship(back_populates="snapshots")

@@ -12,10 +12,16 @@ class TransactionCreate(BaseModel):
     occurred_on: date
     description: str = Field(min_length=2, max_length=240)
     category: str = Field(min_length=2, max_length=80)
+    category_id: UUID | None = None
+    origin: Literal["fixed_income", "variable_income", "expense", "recurring_expense"] | None = None
+    status: Literal["pending", "paid", "received"] = "pending"
     benefit_kind: Literal["vr", "va", "flex"] | None = None
     recurring: bool = False
     payment_method: Literal["pix", "credit", "cash", "benefit"] | None = None
     credit_card_id: UUID | None = None
+    installments_total: int | None = Field(default=None, ge=1)
+    current_installment: int | None = Field(default=None, ge=1)
+    bill_reference: str | None = Field(default=None, max_length=7)
     idempotency_key: str = Field(min_length=8, max_length=80)
 
     @model_validator(mode="after")
@@ -102,3 +108,133 @@ class FamilyInviteCreate(BaseModel):
     email: str
     relation: str = Field(min_length=2, max_length=40)
     role: Literal["manager", "member", "viewer"] = "member"
+
+
+# --------------- Category ---------------
+
+class CategoryCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    type: Literal["income", "expense"]
+    color: str | None = Field(default=None, max_length=20)
+    icon: str | None = Field(default=None, max_length=40)
+
+
+class CategoryRead(BaseModel):
+    id: UUID
+    name: str
+    type: str
+    color: str | None
+    icon: str | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --------------- RecurrenceRule ---------------
+
+class RecurrenceRuleCreate(BaseModel):
+    description: str = Field(min_length=2, max_length=240)
+    type: Literal["subscription", "installment", "fixed_bill"]
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    day_of_month: int = Field(ge=1, le=31)
+    start_date: date
+    end_date: date | None = None
+    total_installments: int | None = Field(default=None, ge=1)
+    category_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_installment(self):
+        if self.type == "installment" and self.total_installments is None:
+            raise ValueError("total_installments obrigatório para parcelamento")
+        return self
+
+
+class RecurrenceRuleRead(BaseModel):
+    id: UUID
+    description: str
+    type: str
+    amount: Decimal
+    day_of_month: int
+    start_date: date
+    end_date: date | None
+    total_installments: int | None
+    current_installment: int | None
+    active: bool
+    category_id: UUID | None
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --------------- Investment ---------------
+
+class InvestmentCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    type: Literal["renda_fixa", "renda_variavel", "fundo", "cripto", "outro"]
+    invested_amount: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    application_date: date
+    institution: str = Field(min_length=2, max_length=120)
+
+
+class InvestmentRead(BaseModel):
+    id: UUID
+    name: str
+    type: str
+    invested_amount: Decimal
+    application_date: date
+    institution: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InvestmentSnapshotCreate(BaseModel):
+    snapshot_date: date
+    current_value: Decimal = Field(max_digits=12, decimal_places=2)
+
+
+class InvestmentSnapshotRead(BaseModel):
+    id: UUID
+    investment_id: UUID
+    snapshot_date: date
+    current_value: Decimal
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --------------- CreditCard / Bill reads ---------------
+
+class CreditCardRead(BaseModel):
+    id: UUID
+    nickname: str
+    brand: str
+    total_limit: Decimal
+    closing_day: int
+    due_day: int
+    color: str | None
+    active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreditCardBillRead(BaseModel):
+    id: UUID
+    credit_card_id: UUID
+    reference_month: str
+    total_amount: Decimal
+    status: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --------------- Transaction read ---------------
+
+class TransactionRead(BaseModel):
+    id: UUID
+    type: str
+    amount: Decimal
+    occurred_on: date
+    description: str
+    category: str
+    category_id: UUID | None
+    origin: str | None
+    status: str
+    benefit_kind: str | None
+    recurring: bool
+    recurrence_id: UUID | None
+    credit_card_id: UUID | None
+    installments_total: int | None
+    current_installment: int | None
+    bill_reference: str | None
+    model_config = ConfigDict(from_attributes=True)

@@ -11,12 +11,13 @@ import { CompositionDonut } from "@/components/charts/CompositionDonut";
 import { CHART, CATEGORICAL } from "@/components/charts/chartTheme";
 import { formatBRL, formatBRLCompact, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   evolucaoPatrimonial,
   alocacao,
   posicoes,
   investimentosKpis,
-} from "@/lib/mock/investimentos";
+} from "@/lib/data/empty";
 
 const { patrimonio, investido, rentabilidade, ganho, trendMes } =
   investimentosKpis;
@@ -29,6 +30,23 @@ function toneClass(value: number): string {
 }
 
 export default function InvestimentosPage() {
+  if (posicoes.length === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Carteira</span>
+          <h1 className="text-2xl font-semibold text-ink">Investimentos</h1>
+          <p className="text-sm text-ink-muted">Evolução patrimonial, alocação e rentabilidade da sua carteira.</p>
+        </header>
+        <EmptyState
+          icon={Wallet}
+          title="Nenhum investimento cadastrado"
+          description="Quando você adicionar suas posições, a evolução patrimonial e a alocação serão exibidas aqui."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
@@ -45,7 +63,7 @@ export default function InvestimentosPage() {
       <BentoGrid>
         {/* ---------- HERO: patrimônio + rentabilidade ---------- */}
         <GlassCard
-          strong
+          variant="hero"
           className="col-span-12 flex flex-col justify-between gap-6 lg:col-span-7"
         >
           <div className="flex flex-col gap-4">
@@ -114,7 +132,7 @@ export default function InvestimentosPage() {
         </GlassCard>
 
         {/* ---------- Donut: alocação por tipo ---------- */}
-        <GlassCard className="col-span-12 flex flex-col lg:col-span-5">
+        <GlassCard variant="liquid" className="col-span-12 flex flex-col lg:col-span-5">
           <SectionHeader
             title="Alocação por tipo"
             subtitle="Composição da carteira"
@@ -161,7 +179,7 @@ export default function InvestimentosPage() {
         </GlassCard>
 
         {/* ---------- Evolução patrimonial (linha) ---------- */}
-        <GlassCard className="col-span-12 lg:col-span-8">
+        <GlassCard variant="liquid" className="col-span-12 lg:col-span-8">
           <SectionHeader
             title="Evolução patrimonial"
             subtitle="Valor aportado x valor de mercado — últimos 12 meses"
@@ -183,7 +201,7 @@ export default function InvestimentosPage() {
 
         {/* ---------- KPIs de apoio ---------- */}
         <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-          <GlassCard className="flex flex-col gap-2">
+          <GlassCard variant="liquid" className="flex flex-col gap-2">
             <span className="text-sm font-medium text-ink-soft">
               Total investido
             </span>
@@ -195,7 +213,7 @@ export default function InvestimentosPage() {
             </span>
           </GlassCard>
 
-          <GlassCard className="flex flex-col gap-2">
+          <GlassCard variant="liquid" className="flex flex-col gap-2">
             <span className="text-sm font-medium text-ink-soft">
               Resultado
             </span>
@@ -218,7 +236,7 @@ export default function InvestimentosPage() {
         </div>
 
         {/* ---------- Tabela de posições ---------- */}
-        <GlassCard className="col-span-12">
+        <GlassCard variant="liquid" className="col-span-12">
           <SectionHeader
             title="Posições"
             subtitle="Detalhamento por ativo — rentabilidade individual"

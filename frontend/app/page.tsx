@@ -21,6 +21,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { formatBRL, formatBRLCompact, formatPercent } from "@/lib/format";
 import {
@@ -28,7 +29,7 @@ import {
   saldoHistorico,
   proximosVencimentos,
   type Vencimento,
-} from "@/lib/mock";
+} from "@/lib/data/empty";
 
 /* ---------- Vencimentos: metadados por tipo ---------- */
 
@@ -80,6 +81,22 @@ function statusVenc(dias: number): { label: string; cls: string; Icon: typeof Ca
 
 export default function VisaoGeralPage() {
   const saldos = saldoHistorico.map((p) => Number(p.saldo));
+
+  if (saldos.length === 0 && proximosVencimentos.length === 0) {
+    return (
+      <div className="flex flex-col gap-5 py-2">
+        <PageHeader eyebrow="Painel financeiro" title="Visão geral" description="Saldo, movimentações e próximos compromissos em um único lugar." />
+        <EmptyState
+          icon={Wallet}
+          title="Sua conta está pronta"
+          description="Você ainda não possui movimentações. Faça o primeiro lançamento para começar a formar seu saldo, gráficos e indicadores."
+          actionLabel="Criar primeiro lançamento"
+          actionHref="/lancamentos"
+        />
+      </div>
+    );
+  }
+
   const menor = Math.min(...saldos);
   const maior = Math.max(...saldos);
   const totalVencimentos = proximosVencimentos.reduce((acc, v) => acc + v.valor, 0);
@@ -90,7 +107,7 @@ export default function VisaoGeralPage() {
       <BentoGrid>
         {/* ---------- HERO: Saldo do mês ---------- */}
         <GlassCard
-          strong
+          variant="hero"
           className="col-span-12 flex flex-col gap-6 lg:col-span-8"
         >
           <section aria-labelledby="hero-saldo" className="flex h-full flex-col gap-6">
@@ -186,7 +203,7 @@ export default function VisaoGeralPage() {
         </section>
 
         {/* ---------- Próximos vencimentos ---------- */}
-        <GlassCard className="col-span-12">
+        <GlassCard variant="liquid" className="col-span-12">
           <section aria-labelledby="venc-titulo">
             <SectionHeader
               title="Próximos vencimentos"

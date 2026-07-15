@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { CompositionDonut } from "@/components/charts/CompositionDonut";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
@@ -19,7 +20,7 @@ import {
   gastosPorCategoria,
   gastosTotal,
   gastosHistorico,
-} from "@/lib/mock";
+} from "@/lib/data/empty";
 
 /**
  * Composição de Gastos (CLAUDE.md 6.2 · item 3).
@@ -28,6 +29,21 @@ import {
  */
 export default function GastosPage() {
   const { modo } = usePeriodo();
+
+  if (gastosPorCategoria.length === 0) {
+    return (
+      <section className="flex flex-col gap-6">
+        <PageHeader eyebrow="Finanças" title="Composição de gastos" description="Entenda quais categorias mais consomem seu orçamento e como evoluem no tempo." />
+        <EmptyState
+          icon={PieChart}
+          title="Nenhum gasto registrado"
+          description="A composição por categoria será calculada automaticamente a partir dos seus lançamentos de saída."
+          actionLabel="Registrar um gasto"
+          actionHref="/lancamentos"
+        />
+      </section>
+    );
+  }
 
   // Ordena do maior para o menor e fixa a cor por posição — o donut e a
   // tabela consomem exatamente este array, então as cores casam sempre.
@@ -62,7 +78,7 @@ export default function GastosPage() {
       <BentoGrid>
         {/* Donut de composição — card de destaque (hero) */}
         <GlassCard
-          strong
+          variant="hero"
           className="gz-rise col-span-12 flex flex-col lg:col-span-5"
           style={{ animationDelay: "0ms" }}
         >
@@ -156,6 +172,7 @@ export default function GastosPage() {
 
           {/* Evolução do total de gastos */}
           <GlassCard
+            variant="liquid"
             className="gz-rise col-span-2 flex flex-col"
             style={{ animationDelay: "300ms" }}
           >
@@ -186,6 +203,7 @@ export default function GastosPage() {
 
         {/* Ranking — tabela das categorias que mais pesam */}
         <GlassCard
+          variant="liquid"
           className="gz-rise col-span-12"
           style={{ animationDelay: "360ms" }}
         >

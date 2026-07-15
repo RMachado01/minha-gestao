@@ -1,20 +1,81 @@
+import Link from "next/link";
 import { LockKeyhole, Wallet } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ confirmed?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+
   return (
     <main className="relative grid min-h-dvh place-items-center overflow-hidden px-4 py-10">
-      <div aria-hidden className="absolute left-[8%] top-[8%] size-72 rounded-full bg-indigo-500/25 blur-3xl" />
-      <div aria-hidden className="absolute bottom-[5%] right-[5%] size-80 rounded-full bg-cyan-400/15 blur-3xl" />
-      <section className="ios-glass relative w-full max-w-md overflow-hidden rounded-[2rem] p-7 sm:p-9" aria-labelledby="login-title">
+      {/* Animated background orbs — green brand */}
+      <div
+        aria-hidden
+        className="login-float absolute left-[5%] top-[10%] size-80 rounded-full bg-[#006b3f]/20 blur-[80px]"
+      />
+      <div
+        aria-hidden
+        className="login-float-delayed absolute bottom-[8%] right-[8%] size-96 rounded-full bg-[#00a86b]/15 blur-[100px]"
+      />
+      <div
+        aria-hidden
+        className="login-pulse absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-[#006b3f]/10 blur-[120px]"
+      />
+
+      {/* Card */}
+      <section
+        className="login-card-enter ios-glass relative w-full max-w-md overflow-hidden rounded-[2rem] p-7 sm:p-9"
+        aria-labelledby="login-title"
+      >
+        {/* Brand header */}
         <div className="mb-8 flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-indigo-500/20 text-accent"><Wallet className="size-5" /></span>
-          <div><p className="font-semibold text-ink">Minha Gestão</p><p className="text-xs text-ink-muted">Sua vida financeira, clara.</p></div>
+          <span className="grid size-11 place-items-center rounded-2xl bg-[#006b3f]/20 text-[#00a86b]">
+            <Wallet className="size-5" />
+          </span>
+          <div>
+            <p className="font-semibold text-ink">Minha Gestão</p>
+            <p className="text-xs text-ink-muted">Sua vida financeira, clara.</p>
+          </div>
         </div>
-        <h1 id="login-title" className="text-3xl font-semibold tracking-tight text-ink">Bem-vindo de volta</h1>
-        <p className="mt-2 text-sm text-ink-soft">Entre para acompanhar seu saldo, cartões e ganhos.</p>
+
+        <h1
+          id="login-title"
+          className="text-3xl font-semibold tracking-tight text-ink"
+        >
+          Bem-vindo de volta
+        </h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          Entre para acompanhar seu saldo, cartões e ganhos.
+        </p>
+
+        {params.confirmed === "1" && (
+          <p role="status" className="mt-6 rounded-2xl bg-emerald-400/10 p-4 text-sm text-pos">
+            E-mail confirmado com sucesso. Entre com seu e-mail e senha para acessar sua conta.
+          </p>
+        )}
+
+        {params.error && (
+          <p role="alert" className="mt-6 rounded-2xl bg-rose-400/10 p-4 text-sm text-neg">
+            Não foi possível confirmar sua conta. Solicite um novo link e tente novamente.
+          </p>
+        )}
+
         <LoginForm />
-        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-ink-muted"><LockKeyhole className="size-3.5" />Sessão protegida e dados criptografados</p>
+
+        <p className="mt-5 text-center text-sm text-ink-soft">
+          Não tem conta?{" "}
+          <Link href="/cadastro" className="font-medium text-accent hover:underline">
+            Criar conta
+          </Link>
+        </p>
+
+        <p className="mt-4 flex items-center justify-center gap-2 text-xs text-ink-muted">
+          <LockKeyhole className="size-3.5" />
+          Sessão protegida e dados criptografados
+        </p>
       </section>
     </main>
   );

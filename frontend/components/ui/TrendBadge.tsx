@@ -22,7 +22,7 @@ export function TrendBadge({ value, invert = false, className }: TrendBadgeProps
   return (
     <span
       className={cn(
-        "tnum inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
+        "tnum inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold backdrop-blur-sm",
         good
           ? "bg-[color-mix(in_oklab,var(--color-pos)_18%,transparent)] text-pos"
           : "bg-[color-mix(in_oklab,var(--color-neg)_18%,transparent)] text-neg",

@@ -16,7 +16,7 @@ import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
-import { getUber, uberKpis } from "@/lib/mock";
+import { getUber, uberKpis } from "@/lib/data/empty";
 import { usePeriodo } from "@/lib/usePeriodo";
 import { formatBRL, formatPercent } from "@/lib/format";
 import { VehicleManager } from "@/components/uber/VehicleManager";
@@ -55,7 +55,7 @@ export default function UberPage() {
         <DailyUberEntry />
         {/* HERO — lucro líquido (positivo = verde) */}
         <GlassCard
-          strong
+          variant="hero"
           className="relative col-span-12 flex flex-col justify-between gap-6 overflow-hidden lg:col-span-8"
         >
           <div
@@ -99,6 +99,7 @@ export default function UberPage() {
 
         {/* ALERTA — custo de combustível (subir = RUIM, invert) */}
         <GlassCard
+          variant="liquid"
           interactive
           className="col-span-12 flex flex-col justify-between gap-4 ring-1 ring-[color-mix(in_oklab,var(--color-warn)_38%,transparent)] sm:col-span-6 lg:col-span-4"
         >
@@ -127,7 +128,7 @@ export default function UberPage() {
         </GlassCard>
 
         {/* GRÁFICO PRINCIPAL — receita x combustível x lucro */}
-        <GlassCard className="col-span-12">
+        <GlassCard variant="liquid" className="col-span-12">
           <SectionHeader
             title="Receita, combustível e lucro"
             subtitle={`Evolução ${granularidade} — lucro líquido em destaque (área)`}
@@ -178,6 +179,7 @@ export default function UberPage() {
 
         {/* Km rodados + custo por km (card composto, interativo) */}
         <GlassCard
+          variant="liquid"
           interactive
           className="col-span-12 flex flex-col gap-4 sm:col-span-3 lg:col-span-3"
         >

@@ -6,3 +6,5 @@ export * from "./gastos";
 export * from "./investimentos";
 export * from "./cartoes";
 export * from "./uber";
+export * from "./transacoes";
+export * from "./planejamento";

@@ -24,7 +24,13 @@ const toneClass = {
   neutral: "text-ink",
 } as const;
 
-/** Card de KPI padrão: rótulo, número em destaque e tendência opcional. */
+const stripeClass = {
+  pos: "accent-stripe-pos",
+  neg: "accent-stripe-neg",
+  neutral: "accent-stripe-neutral",
+} as const;
+
+/** KPI card with liquid glass, accent stripe, and glow icon. */
 export function KpiCard({
   label,
   value,
@@ -37,10 +43,19 @@ export function KpiCard({
   ...cardProps
 }: KpiCardProps) {
   return (
-    <GlassCard className={cn("flex flex-col gap-3", className)} {...cardProps}>
+    <GlassCard
+      variant="liquid"
+      className={cn("flex flex-col gap-3", stripeClass[tone], className)}
+      {...cardProps}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-ink-soft">{label}</span>
-        {icon && <span className="text-ink-muted">{icon}</span>}
+        {icon && (
+          <span className="relative text-ink-muted">
+            <span className="icon-glow" />
+            {icon}
+          </span>
+        )}
       </div>
       <div className="flex items-end justify-between gap-2">
         <span className={cn("tnum text-2xl font-semibold", toneClass[tone])}>

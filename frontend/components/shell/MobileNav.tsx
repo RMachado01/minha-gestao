@@ -18,7 +18,7 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="ios-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.4rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
+    <nav className="liquid-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.4rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
       {ITEMS.map(({ href, label, icon: Icon, primary }) => {
         const active =
           href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -28,7 +28,7 @@ export function MobileNav() {
             href={href}
             className={cn(
               "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium transition-all",
-              primary && "-mt-5 min-h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl shadow-indigo-500/25",
+              primary && "-mt-5 min-h-14 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-3)] text-white shadow-xl shadow-[var(--color-accent)]/25",
               active
                 ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)] text-ink"
                 : "text-ink-soft hover:text-ink",

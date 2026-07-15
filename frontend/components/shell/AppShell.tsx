@@ -4,10 +4,14 @@ import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+
+const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade"]);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/login") return <>{children}</>;
+  if (PUBLIC_ROUTES.has(pathname)) return <>{children}</>;
+
   return (
     <div className="flex min-h-dvh">
       <Sidebar />
@@ -19,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Suspense fallback={<div className="h-64" />}>{children}</Suspense>
         </main>
       </div>
+      <OnboardingTour />
     </div>
   );
 }

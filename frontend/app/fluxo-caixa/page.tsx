@@ -16,9 +16,10 @@ import { CompareBarChart } from "@/components/charts/CompareBarChart";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { usePeriodo } from "@/lib/usePeriodo";
-import { getFluxo, fluxoKpis } from "@/lib/mock/fluxo";
+import { getFluxo, fluxoKpis } from "@/lib/data/empty";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 
 /** Rótulos contextuais conforme o filtro de período global. */
@@ -32,6 +33,21 @@ export default function FluxoCaixaPage() {
   const { modo } = usePeriodo();
   const data = getFluxo(modo);
   const rotulo = periodoLabel(modo);
+
+  if (data.length === 0) {
+    return (
+      <div className="flex flex-col gap-6 py-2">
+        <PageHeader eyebrow="Finanças" title="Fluxo de caixa" description="Compare entradas, saídas e saldo acumulado no período selecionado." />
+        <EmptyState
+          icon={Scale}
+          title="Fluxo de caixa ainda vazio"
+          description="Entradas e saídas aparecerão aqui depois que você registrar suas movimentações."
+          actionLabel="Adicionar movimentação"
+          actionHref="/lancamentos"
+        />
+      </div>
+    );
+  }
 
   // Agregações do período selecionado (reagem ao toggle mensal/anual).
   const totalEntradas = data.reduce((acc, p) => acc + Number(p.entradas), 0);
@@ -59,7 +75,7 @@ export default function FluxoCaixaPage() {
         <BentoGrid>
           {/* Card hero: número grande do saldo + gráfico de barras principal. */}
           <GlassCard
-            strong
+            variant="hero"
             interactive
             className="col-span-1 flex flex-col gap-5 sm:col-span-6 lg:col-span-8"
           >
@@ -125,6 +141,7 @@ export default function FluxoCaixaPage() {
 
           {/* Card lateral: evolução do saldo (área) ao longo do período. */}
           <GlassCard
+            variant="liquid"
             interactive
             className="col-span-1 flex flex-col sm:col-span-6 lg:col-span-4"
           >

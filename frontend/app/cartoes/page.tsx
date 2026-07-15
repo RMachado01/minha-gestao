@@ -18,11 +18,10 @@ import { BillCalendar } from "@/components/cards/BillCalendar";
 import { CardRegistration } from "@/components/cards/CardRegistration";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 import {
-  cartoes,
-  cartoesKpis,
   faturasHistorico,
   type Cartao,
-} from "@/lib/mock";
+} from "@/lib/data/empty";
+import { useCreditCards } from "@/lib/supabase/useCreditCards";
 
 /** Limiar de uso do limite que dispara sinal de atenção. */
 const ALERTA_USO = 0.7;
@@ -69,6 +68,7 @@ function CartaoItem({ cartao, delay }: { cartao: Cartao; delay: number }) {
 
   return (
     <GlassCard
+      variant="liquid"
       interactive
       className="col-span-12 flex flex-col gap-4 sm:col-span-3 lg:col-span-4"
     >
@@ -192,15 +192,32 @@ function CartaoItem({ cartao, delay }: { cartao: Cartao; delay: number }) {
 }
 
 export default function CartoesPage() {
-  const { limiteTotal, limiteUsado, faturasEmAberto, proximoVencimento } =
-    cartoesKpis;
-  const usoGlobal = limiteUsado / limiteTotal;
+  const { cards: storedCards, loading, refresh } = useCreditCards();
+  const month = String(new Date().getMonth() + 1).padStart(2, "0");
+  const cartoes: Cartao[] = storedCards.map((card) => ({
+    id: card.id,
+    apelido: card.nickname,
+    bandeira: card.brand,
+    limiteTotal: card.total_limit,
+    limiteUsado: card.current_bill,
+    faturaAtual: card.current_bill,
+    vencimento: `${String(card.due_day).padStart(2, "0")}/${month}`,
+    status: "aberta",
+    cor: card.color ?? "#006b3f",
+  }));
+  const limiteTotal = cartoes.reduce((sum, card) => sum + card.limiteTotal, 0);
+  const limiteUsado = cartoes.reduce((sum, card) => sum + card.limiteUsado, 0);
+  const faturasEmAberto = cartoes.reduce((sum, card) => sum + card.faturaAtual, 0);
+  const proximoVencimento = cartoes.length > 0
+    ? cartoes.map((card) => card.vencimento).sort((a, b) => Number(a.slice(0, 2)) - Number(b.slice(0, 2)))[0]
+    : "—";
+  const usoGlobal = limiteTotal > 0 ? limiteUsado / limiteTotal : 0;
   const disponivelGlobal = limiteTotal - limiteUsado;
 
   // Tendência da fatura consolidada: mês atual vs. anterior (cair = bom → invert).
-  const atual = faturasHistorico[faturasHistorico.length - 1].total as number;
-  const anterior = faturasHistorico[faturasHistorico.length - 2].total as number;
-  const tendenciaFatura = variacao(atual, anterior);
+  const atual = Number(faturasHistorico.at(-1)?.total ?? 0);
+  const anterior = Number(faturasHistorico.at(-2)?.total ?? 0);
+  const tendenciaFatura = anterior > 0 ? variacao(atual, anterior) : 0;
 
   return (
     <section className="flex flex-col gap-6">
@@ -224,14 +241,14 @@ export default function CartoesPage() {
           </p>
         </div>
         </div>
-        <CardRegistration />
+        <CardRegistration onSaved={refresh} />
       </div>
 
       {/* --- KPIs consolidados --- */}
       <BentoGrid>
         {/* Hero: faturas em aberto (destaque) */}
         <GlassCard
-          strong
+          variant="hero"
           className="col-span-12 flex flex-col justify-between gap-5 lg:col-span-6"
         >
           <div className="flex items-start justify-between">
@@ -299,7 +316,7 @@ export default function CartoesPage() {
           label="Próximo vencimento"
           value={proximoVencimento}
           icon={<CalendarClock className="h-4 w-4" strokeWidth={2} />}
-          hint="Nubank · fatura aberta"
+          hint={cartoes.length > 0 ? "Próxima fatura em aberto" : "Nenhum cartão cadastrado"}
         />
       </BentoGrid>
 
@@ -307,7 +324,7 @@ export default function CartoesPage() {
       <div>
         <SectionHeader
           title="Seus cartões"
-          subtitle={`${cartoes.length} cartões · limite usado x disponível`}
+          subtitle={loading ? "Carregando seus cartões..." : `${cartoes.length} cartões · limite usado x disponível`}
         />
         <BentoGrid>
           {cartoes.map((cartao, i) => (
@@ -317,11 +334,11 @@ export default function CartoesPage() {
       </div>
 
       {/* --- Histórico das faturas --- */}
-      <GlassCard>
-        <BillCalendar />
+      <GlassCard variant="liquid">
+        <BillCalendar cards={cartoes} />
       </GlassCard>
 
-      <GlassCard>
+      <GlassCard variant="liquid">
         <SectionHeader
           title="Total das faturas mês a mês"
           subtitle="Evolução do valor consolidado em aberto"

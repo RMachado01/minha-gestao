@@ -481,33 +481,32 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 
 ### 7.1 Implementado
 
-- Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com dados mockados.
+- Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com estados vazios honestos para contas novas; dados de demonstração permanecem isolados e não aparecem em sessões autenticadas.
 - Tema claro/escuro persistido, shell responsivo, superfícies sólidas no conteúdo e Liquid Glass restrito a navegação/controles.
 - Paleta de gráficos baseada em CSS variables, com contraste próprio para temas claro e escuro; `theme-color` do navegador acompanha o tema.
 - Cabeçalhos de página reutilizáveis e navegação desktop agrupada; mobile usa barra inferior de cinco destinos.
-- Formulário de receitas, despesas e VR/VA; seleção de cartão quando a compra usa crédito.
-- Campo monetário reutilizável com prefixo `R$` e preview do cartão/fatura selecionados.
-- Cadastro visual de cartões e calendário de vencimentos.
+- Formulário de receitas, despesas e VR/VA persistido na Supabase; compras no crédito exigem um cartão real e gravam `credit_card_id`.
+- Campo monetário reutilizável com prefixo `R$` e preview do cartão, fechamento, vencimento, limite e fatura atual.
+- Cadastro de cartões persistido na Supabase e calendário de vencimentos baseado no mês atual.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
-- Login Supabase preparado com `@supabase/ssr` e `proxy.ts` do Next.js 16.
+- Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
+- Tour guiado vinculado ao usuário no primeiro login.
 - Configurações de perfil e estrutura inicial de grupo familiar.
 - FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares.
-- Migração inicial do Supabase com constraints, índices e RLS por proprietário.
+- Quatro migrations Supabase com constraints, índices, RLS, consentimento LGPD, views `security_invoker`, trigger de perfil e RPC de exclusão endurecida.
 - Build de produção, TypeScript, ESLint e compilação Python validados.
 - Repositório Git privado publicado e sincronizado em `origin/main`.
 
 ### 7.2 Próximos passos prioritários
 
-1. Criar o projeto Supabase e aplicar `supabase/migrations/202607120001_initial_schema.sql`.
-2. Configurar `frontend/.env.local` e variáveis Development/Preview/Production na Vercel.
-3. Trocar mocks por queries reais do Supabase e mutações via API, começando por login → perfil → cartões → transações.
-4. Persistir diário Uber e recalcular consumo/lucro no backend; o frontend nunca será a autoridade do cálculo.
-5. Implementar criação de conta, recuperação de senha, logout e callback de autenticação.
-6. Adicionar políticas familiares que permitam acesso por `household_id` conforme papel, sem ampliar as políticas antes dos fluxos estarem definidos.
-7. Gerar o cliente TypeScript pelo OpenAPI e padronizar envelopes de erro.
-8. Criar testes unitários de dinheiro/consumo, integração da API e E2E dos fluxos críticos.
-9. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations.
-10. Publicar preview na Vercel e definir a hospedagem do FastAPI antes do primeiro deploy de produção.
+1. Aplicar `supabase/migrations/202607150001_security_hardening.sql` no projeto Supabase existente e executar novamente o Security Advisor.
+2. Persistir perfil, investimentos, planejamento, recorrências, garagem e diário Uber; o backend deve recalcular valores financeiros e de consumo.
+3. Implementar recuperação de senha e reenvio de confirmação de e-mail.
+4. Adicionar políticas familiares que permitam acesso por `household_id` conforme papel, sem ampliar as políticas antes dos fluxos estarem definidos.
+5. Gerar o cliente TypeScript pelo OpenAPI e padronizar envelopes de erro.
+6. Criar testes unitários de dinheiro/consumo, integração da API e E2E dos fluxos críticos.
+7. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations.
+8. Definir a hospedagem de produção do FastAPI e configurar `NEXT_PUBLIC_API_URL` quando o frontend começar a consumi-lo.
 
 ### 7.3 Comandos locais
 
