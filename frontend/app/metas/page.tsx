@@ -144,8 +144,9 @@ export default function GoalsPage() {
       if (!investmentsResult.error) {
         setInvestmentTotal((investmentsResult.data ?? []).reduce((sum, item) => sum + Number(item.invested_amount), 0));
       }
-    } catch {
-      setError("Não foi possível carregar os dados. Recarregue a página e tente novamente.");
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`Não foi possível carregar os dados. Detalhe: ${detail}`);
     } finally {
       setLoading(false);
     }
