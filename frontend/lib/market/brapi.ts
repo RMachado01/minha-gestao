@@ -90,7 +90,10 @@ export async function fetchMarketQuotes(tickers: string[], revalidateSeconds: nu
 
   const url = `https://brapi.dev/api/quote/${encodeURIComponent(tickers.join(","))}?dividends=true&token=${token}`;
   const response = await fetch(url, { next: { revalidate: revalidateSeconds } });
-  if (!response.ok) throw new Error(`brapi.dev retornou status ${response.status}.`);
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`brapi.dev retornou status ${response.status}.${body ? ` Detalhe: ${body.slice(0, 300)}` : ""}`);
+  }
 
   const data = (await response.json()) as BrapiResponse;
   return (data.results ?? []).map(toQuote).filter((quote): quote is MarketQuote => quote !== null);
