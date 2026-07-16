@@ -18,6 +18,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { AnimatedValue } from "@/components/ui/AnimatedValue";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -110,6 +111,8 @@ export default function VisaoGeralPage() {
           variant="hero"
           className="col-span-12 flex flex-col gap-6 lg:col-span-8"
         >
+          <span className="hero-orb -right-16 -top-16 h-72 w-72" aria-hidden="true" />
+          <span className="hero-orb hero-orb-2 -bottom-20 left-1/3 h-64 w-64" aria-hidden="true" />
           <section aria-labelledby="hero-saldo" className="flex h-full flex-col gap-6">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -131,7 +134,7 @@ export default function VisaoGeralPage() {
                 aria-label={`Saldo do mês: ${formatBRL(overviewKpis.saldoMes)}`}
                 className="tnum bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-pos)] bg-clip-text text-[2.75rem] font-semibold leading-none tracking-tight text-transparent sm:text-6xl"
               >
-                {formatBRL(overviewKpis.saldoMes)}
+                <AnimatedValue target={overviewKpis.saldoMes} format={formatBRL} durationMs={900} />
               </p>
               <TrendBadge value={overviewKpis.trendSaldo} />
             </div>
@@ -175,6 +178,8 @@ export default function VisaoGeralPage() {
           <KpiCard
             label="Entradas"
             value={formatBRL(overviewKpis.entradas)}
+            numericValue={overviewKpis.entradas}
+            formatValue={formatBRL}
             trend={overviewKpis.trendEntradas}
             tone="pos"
             icon={<ArrowUpCircle className="h-4 w-4" />}
@@ -184,6 +189,8 @@ export default function VisaoGeralPage() {
           <KpiCard
             label="Saídas"
             value={formatBRL(overviewKpis.saidas)}
+            numericValue={overviewKpis.saidas}
+            formatValue={formatBRL}
             trend={overviewKpis.trendSaidas}
             tone="neg"
             invertTrend
@@ -194,6 +201,9 @@ export default function VisaoGeralPage() {
           <KpiCard
             label="Economia"
             value={formatPercent(overviewKpis.economiaPct)}
+            numericValue={overviewKpis.economiaPct}
+            formatValue={formatPercent}
+            decimals={3}
             trend={overviewKpis.trendEconomia}
             tone="pos"
             icon={<PiggyBank className="h-4 w-4" />}

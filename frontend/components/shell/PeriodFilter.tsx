@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { usePeriodo, type Modo } from "@/lib/usePeriodo";
 import { cn } from "@/lib/cn";
 
@@ -8,7 +9,7 @@ const OPCOES: { value: Modo; label: string }[] = [
   { value: "anual", label: "Anual" },
 ];
 
-/** Toggle de período global (Mensal | Anual), estado na URL. */
+/** Toggle de período global (Mensal | Anual), estado na URL, com indicador deslizante. */
 export function PeriodFilter() {
   const { modo, setModo } = usePeriodo();
 
@@ -27,12 +28,17 @@ export function PeriodFilter() {
             aria-pressed={active}
             onClick={() => setModo(opt.value)}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-all",
-              active
-                ? "bg-[color-mix(in_oklab,var(--color-accent)_28%,transparent)] text-ink"
-                : "text-ink-soft hover:text-ink",
+              "relative rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              active ? "text-ink" : "text-ink-soft hover:text-ink",
             )}
           >
+            {active && (
+              <motion.span
+                layoutId="period-filter-pill"
+                className="absolute inset-0 -z-10 rounded-full bg-[color-mix(in_oklab,var(--color-accent)_28%,transparent)]"
+                transition={{ type: "spring", stiffness: 500, damping: 34 }}
+              />
+            )}
             {opt.label}
           </button>
         );

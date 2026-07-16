@@ -14,7 +14,7 @@ export function BentoGrid({ children, className }: BentoGridProps) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4 sm:grid-cols-6 lg:grid-cols-12 lg:gap-5",
+        "bento-stagger grid grid-cols-1 gap-4 sm:grid-cols-6 lg:grid-cols-12 lg:gap-5",
         className,
       )}
     >

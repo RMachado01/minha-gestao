@@ -405,6 +405,51 @@ html[data-theme="light"] .liquid-glass-hero::before {
   50% { box-shadow: 0 0 28px -6px rgba(0, 107, 63, 0.3); }
 }
 
+/* ---------- Ambient hero orb — drifting glow behind hero cards ---------- */
+@keyframes ambient-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: .5; }
+  50% { transform: translate3d(3%, -4%, 0) scale(1.1); opacity: .78; }
+}
+.hero-orb {
+  position: absolute;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(64px);
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-pos) 50%, transparent), transparent 72%);
+  animation: ambient-drift 11s ease-in-out infinite;
+  pointer-events: none;
+}
+.hero-orb-2 {
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-accent-2) 46%, transparent), transparent 72%);
+  animation-duration: 14s;
+  animation-delay: -4s;
+}
+
+/* ---------- Cursor spotlight — reactive glow for interactive cards ---------- */
+.card-spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.card-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  opacity: var(--spot-opacity, 0);
+  background: radial-gradient(
+    280px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    color-mix(in oklab, var(--color-accent-2) 22%, transparent),
+    transparent 72%
+  );
+  transition: opacity .35s ease;
+  pointer-events: none;
+}
+.card-spotlight > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- User avatar ---------- */
 .avatar-ring {
   box-shadow: 0 0 0 2px rgba(0, 107, 63, 0.4), 0 0 12px -4px rgba(0, 168, 107, 0.3);
@@ -443,6 +488,22 @@ html[data-theme="light"] .avatar-ring {
 .login-float-delayed { animation: login-float 7s ease-in-out 1s infinite; }
 .login-pulse { animation: login-pulse 4s ease-in-out infinite; }
 .login-card-enter { animation: login-card-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---------- Bento grid — staggered entrance for direct children ---------- */
+@keyframes bento-in {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.bento-stagger > * {
+  animation: bento-in .55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.bento-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.bento-stagger > *:nth-child(2) { animation-delay: 70ms; }
+.bento-stagger > *:nth-child(3) { animation-delay: 140ms; }
+.bento-stagger > *:nth-child(4) { animation-delay: 210ms; }
+.bento-stagger > *:nth-child(5) { animation-delay: 280ms; }
+.bento-stagger > *:nth-child(6) { animation-delay: 350ms; }
+.bento-stagger > *:nth-child(n+7) { animation-delay: 420ms; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
