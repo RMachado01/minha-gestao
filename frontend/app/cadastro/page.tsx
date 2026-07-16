@@ -70,9 +70,11 @@ export default function CadastroPage() {
       return;
     }
 
-    // Supabase returns user with identities=[] when email already exists
+    // Supabase returns user with identities=[] when email already exists.
+    // Mostramos a mesma tela de sucesso de um cadastro novo em vez de confirmar
+    // que o e-mail já existe — evita enumeração de contas por um atacante.
     if (result.data.user && result.data.user.identities?.length === 0) {
-      setError("Este e-mail já está cadastrado. Tente fazer login.");
+      setSuccess(true);
       setLoading(false);
       return;
     }
