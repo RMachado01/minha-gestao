@@ -7,6 +7,7 @@ export interface CreditCardRecord {
   id: string;
   nickname: string;
   brand: string;
+  bank: string | null;
   total_limit: number;
   closing_day: number;
   due_day: number;
@@ -35,7 +36,7 @@ export function useCreditCards() {
     const [cardsResult, billsResult] = await Promise.all([
       supabase
         .from("credit_cards")
-        .select("id,nickname,brand,total_limit,closing_day,due_day,color,active")
+        .select("id,nickname,brand,bank,total_limit,closing_day,due_day,color,active")
         .eq("active", true)
         .order("nickname"),
       supabase

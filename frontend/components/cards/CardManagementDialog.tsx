@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CreditCardRecord } from "@/lib/supabase/useCreditCards";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { BANKS, CARD_BRANDS } from "@/lib/brands";
 
 type DialogMode = "edit" | "delete";
 
@@ -41,6 +42,7 @@ export function CardManagementDialog({
     const { error: updateError } = await supabase.from("credit_cards").update({
       nickname: String(data.get("nickname")).trim(),
       brand: String(data.get("brand")),
+      bank: String(data.get("bank")),
       total_limit: Number(data.get("limit")),
       color: String(data.get("color")),
       closing_day: Number(data.get("closing_day")),
@@ -125,9 +127,10 @@ export function CardManagementDialog({
             ) : (
               <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={updateCard}>
                 <label className="field-label">Apelido<input className="field" name="nickname" defaultValue={card.nickname} minLength={2} required /></label>
-                <label className="field-label">Bandeira<select className="field" name="brand" defaultValue={card.brand}><option>Mastercard</option><option>Visa</option><option>Elo</option><option>American Express</option></select></label>
+                <label className="field-label">Bandeira<select className="field" name="brand" defaultValue={card.brand}>{Object.keys(CARD_BRANDS).map((key) => <option key={key} value={key}>{key}</option>)}</select></label>
+                <label className="field-label">Banco<select className="field" name="bank" defaultValue={card.bank ?? "Outro"}>{Object.keys(BANKS).map((key) => <option key={key} value={key}>{BANKS[key].label}</option>)}</select></label>
                 <label className="field-label">Limite total (R$)<input className="field tnum" type="number" min="0" step="0.01" name="limit" defaultValue={card.total_limit} required /></label>
-                <label className="field-label">Cor<select className="field" name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></select></label>
+                <label className="field-label">Cor alternativa<select className="field" name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></select></label>
                 <label className="field-label">Dia de fechamento<input className="field" type="number" min="1" max="31" name="closing_day" defaultValue={card.closing_day} required /></label>
                 <label className="field-label">Dia de vencimento<input className="field" type="number" min="1" max="31" name="due_day" defaultValue={card.due_day} required /></label>
                 {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2">{error}</p>}
