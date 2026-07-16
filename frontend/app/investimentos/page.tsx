@@ -1,28 +1,31 @@
 "use client";
 
-import { TrendingUp, Wallet, Layers, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { LineChart, Wallet, Layers, Banknote, Landmark, Settings2 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { KpiCard } from "@/components/ui/KpiCard";
 import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CompositionDonut } from "@/components/charts/CompositionDonut";
 import { CHART, CATEGORICAL } from "@/components/charts/chartTheme";
-import { formatBRL, formatBRLCompact, formatPercent } from "@/lib/format";
+import { formatBRL, formatBRLCompact, formatDateBR, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  evolucaoPatrimonial,
-  alocacao,
-  posicoes,
-  investimentosKpis,
-} from "@/lib/data/empty";
+import { INVESTMENT_TYPE_LABEL, useInvestments, type InvestmentPosition } from "@/lib/supabase/useInvestments";
+import { InvestmentRegistration } from "@/components/investments/InvestmentRegistration";
+import { InvestmentManageDialog } from "@/components/investments/InvestmentManageDialog";
+import { InvestorWelcome } from "@/components/investments/InvestorWelcome";
 
-const { patrimonio, investido, rentabilidade, ganho, trendMes } =
-  investimentosKpis;
-
-const alocacaoTotal = alocacao.reduce((acc, s) => acc + s.value, 0);
+const INCOME_LABEL: Record<string, string> = {
+  dividendo: "Dividendo",
+  jcp: "JCP",
+  rendimento: "Rendimento",
+  juros: "Juros",
+  outro: "Outro",
+};
 
 /** Retorna a classe de cor semântica conforme o sinal do valor. */
 function toneClass(value: number): string {
@@ -30,268 +33,224 @@ function toneClass(value: number): string {
 }
 
 export default function InvestimentosPage() {
-  if (posicoes.length === 0) {
-    return (
-      <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Carteira</span>
-          <h1 className="text-2xl font-semibold text-ink">Investimentos</h1>
-          <p className="text-sm text-ink-muted">Evolução patrimonial, alocação e rentabilidade da sua carteira.</p>
-        </header>
-        <EmptyState
-          icon={Wallet}
-          title="Nenhum investimento cadastrado"
-          description="Quando você adicionar suas posições, a evolução patrimonial e a alocação serão exibidas aqui."
-        />
-      </div>
-    );
-  }
+  const { loading, positions, evolucaoPatrimonial, alocacao, proventosRecentes, kpis, refresh } = useInvestments();
+  const [managed, setManaged] = useState<InvestmentPosition | null>(null);
+
+  const alocacaoTotal = alocacao.reduce((acc, s) => acc + s.value, 0);
+  const { patrimonio, investido, rentabilidade, ganho, trendMes, proventosMes, proventosTotal } = kpis;
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-          Carteira
-        </span>
-        <h1 className="text-2xl font-semibold text-ink">Investimentos</h1>
-        <p className="text-sm text-ink-muted">
-          Evolução patrimonial, alocação por tipo e rentabilidade de cada
-          posição.
-        </p>
-      </header>
+      <InvestorWelcome />
 
-      <BentoGrid>
-        {/* ---------- HERO: patrimônio + rentabilidade ---------- */}
-        <GlassCard
-          variant="hero"
-          className="col-span-12 flex flex-col justify-between gap-6 lg:col-span-7"
-        >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-ink-soft">
-                Patrimônio atual
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-ink-soft">
-                <Wallet className="h-3.5 w-3.5 text-accent" strokeWidth={2.2} />
-                Valor de mercado
-              </span>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="flex flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Carteira</span>
+          <h1 className="text-2xl font-semibold text-ink">Investimentos</h1>
+          <p className="text-sm text-ink-muted">
+            Evolução patrimonial, alocação por tipo, proventos e rentabilidade de cada posição.
+          </p>
+        </header>
+        <InvestmentRegistration onSaved={refresh} />
+      </div>
+
+      {!loading && positions.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="Nenhum investimento cadastrado"
+          description="Cadastre sua primeira posição acima. Assim que você adicionar, a evolução patrimonial, a alocação e os proventos aparecem aqui."
+        />
+      ) : (
+        <BentoGrid>
+          {/* ---------- HERO: patrimônio + rentabilidade ---------- */}
+          <GlassCard variant="hero" className="col-span-12 flex flex-col justify-between gap-6 lg:col-span-7">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-ink-soft">Patrimônio atual</span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-ink-soft">
+                  <Wallet className="h-3.5 w-3.5 text-accent" strokeWidth={2.2} />
+                  Valor de mercado
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+                <span className="tnum min-w-0 shrink break-words text-5xl font-semibold leading-none text-ink sm:text-6xl">
+                  {formatBRL(patrimonio)}
+                </span>
+                <TrendBadge value={trendMes} className="mb-1 shrink-0" />
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-              <span className="tnum text-5xl font-semibold leading-none text-ink sm:text-6xl">
-                {formatBRL(patrimonio)}
-              </span>
-              <TrendBadge value={trendMes} className="mb-1" />
+            <div className="-mx-1 -mb-1 opacity-90">
+              <TrendLineChart
+                data={evolucaoPatrimonial}
+                xKey="periodo"
+                height={96}
+                minimal
+                series={[{ key: "atual", label: "Atual", color: CHART.pos, area: true }]}
+              />
             </div>
-          </div>
 
-          {/* Sparkline de fundo — atmosfera, não decorativo (série "atual") */}
-          <div className="-mx-1 -mb-1 opacity-90">
-            <TrendLineChart
-              data={evolucaoPatrimonial}
-              xKey="periodo"
-              height={96}
-              minimal
-              series={[
-                { key: "atual", label: "Atual", color: CHART.pos, area: true },
-              ]}
+            <div className="grid grid-cols-2 gap-4 border-t border-[var(--color-line)] pt-5">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-ink-muted">Rentabilidade</span>
+                <div className="flex items-center gap-2">
+                  <span className={cn("tnum text-2xl font-semibold", toneClass(rentabilidade))}>
+                    {formatPercent(rentabilidade, true)}
+                  </span>
+                  <LineChart className={cn("h-4 w-4", toneClass(rentabilidade))} strokeWidth={2.4} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-ink-muted">Ganho de capital</span>
+                <span className={cn("tnum text-2xl font-semibold", toneClass(ganho))}>
+                  {ganho >= 0 ? "+" : ""}
+                  {formatBRL(ganho)}
+                </span>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* ---------- Donut: alocação por tipo ---------- */}
+          <GlassCard variant="liquid" className="col-span-12 flex flex-col lg:col-span-5">
+            <SectionHeader title="Alocação por tipo" subtitle="Composição da carteira" action={<Layers className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+            {alocacao.length === 0 ? (
+              <p className="mt-4 text-sm text-ink-muted">Sem posições suficientes para calcular a alocação ainda.</p>
+            ) : (
+              <>
+                <CompositionDonut data={alocacao} height={220} centerLabel="Patrimônio" centerValue={formatBRLCompact(patrimonio)} />
+                <ul className="mt-4 flex flex-col gap-2">
+                  {alocacao.map((slice, i) => {
+                    const share = alocacaoTotal > 0 ? slice.value / alocacaoTotal : 0;
+                    return (
+                      <li key={slice.name} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="flex items-center gap-2 text-ink-soft">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CATEGORICAL[i % CATEGORICAL.length] }} />
+                          {slice.name}
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <span className="tnum text-ink">{formatBRL(slice.value)}</span>
+                          <span className="tnum w-12 text-right text-xs text-ink-muted">{formatPercent(share)}</span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </GlassCard>
+
+          {/* ---------- Evolução patrimonial (linha) ---------- */}
+          <GlassCard variant="liquid" className="col-span-12 lg:col-span-8">
+            <SectionHeader title="Evolução patrimonial" subtitle="Valor aportado x valor de mercado" action={<Landmark className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+            {evolucaoPatrimonial.length === 0 ? (
+              <p className="mt-4 text-sm text-ink-muted">Atualize o valor de uma posição para começar a ver a evolução ao longo do tempo.</p>
+            ) : (
+              <TrendLineChart
+                data={evolucaoPatrimonial}
+                xKey="periodo"
+                height={280}
+                showLegend
+                series={[
+                  { key: "investido", label: "Investido", color: CHART.accent },
+                  { key: "atual", label: "Atual", color: CHART.pos, area: true },
+                ]}
+              />
+            )}
+          </GlassCard>
+
+          {/* ---------- KPIs de apoio ---------- */}
+          <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
+            <KpiCard
+              label="Total investido"
+              value={formatBRL(investido)}
+              icon={<Wallet className="size-4" />}
+              hint="Custo de aquisição da carteira"
+            />
+            <KpiCard
+              label="Proventos do mês"
+              value={formatBRL(proventosMes)}
+              icon={<Banknote className="size-4" />}
+              tone={proventosMes > 0 ? "pos" : "neutral"}
+              hint={`${formatBRL(proventosTotal)} recebidos ao todo`}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-[var(--color-line)] pt-5">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-ink-muted">Rentabilidade</span>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "tnum text-2xl font-semibold",
-                    toneClass(rentabilidade),
-                  )}
-                >
-                  {formatPercent(rentabilidade, true)}
-                </span>
-                <TrendingUp
-                  className={cn("h-4 w-4", toneClass(rentabilidade))}
-                  strokeWidth={2.4}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-ink-muted">Ganho acumulado</span>
-              <span
-                className={cn(
-                  "tnum text-2xl font-semibold",
-                  toneClass(ganho),
-                )}
-              >
-                {ganho >= 0 ? "+" : ""}
-                {formatBRL(ganho)}
-              </span>
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* ---------- Donut: alocação por tipo ---------- */}
-        <GlassCard variant="liquid" className="col-span-12 flex flex-col lg:col-span-5">
-          <SectionHeader
-            title="Alocação por tipo"
-            subtitle="Composição da carteira"
-            action={
-              <Layers className="h-4 w-4 text-ink-muted" strokeWidth={2} />
-            }
-          />
-          <CompositionDonut
-            data={alocacao}
-            height={220}
-            centerLabel="Patrimônio"
-            centerValue={formatBRLCompact(patrimonio)}
-          />
-          <ul className="mt-4 flex flex-col gap-2">
-            {alocacao.map((slice, i) => {
-              const share = slice.value / alocacaoTotal;
-              return (
-                <li
-                  key={slice.name}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="flex items-center gap-2 text-ink-soft">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{
-                        backgroundColor:
-                          CATEGORICAL[i % CATEGORICAL.length],
-                      }}
-                    />
-                    {slice.name}
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="tnum text-ink">
-                      {formatBRL(slice.value)}
-                    </span>
-                    <span className="tnum w-12 text-right text-xs text-ink-muted">
-                      {formatPercent(share)}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </GlassCard>
-
-        {/* ---------- Evolução patrimonial (linha) ---------- */}
-        <GlassCard variant="liquid" className="col-span-12 lg:col-span-8">
-          <SectionHeader
-            title="Evolução patrimonial"
-            subtitle="Valor aportado x valor de mercado — últimos 12 meses"
-            action={
-              <Sparkles className="h-4 w-4 text-ink-muted" strokeWidth={2} />
-            }
-          />
-          <TrendLineChart
-            data={evolucaoPatrimonial}
-            xKey="periodo"
-            height={280}
-            showLegend
-            series={[
-              { key: "investido", label: "Investido", color: CHART.accent },
-              { key: "atual", label: "Atual", color: CHART.pos, area: true },
-            ]}
-          />
-        </GlassCard>
-
-        {/* ---------- KPIs de apoio ---------- */}
-        <div className="col-span-12 flex flex-col gap-4 lg:col-span-4">
-          <GlassCard variant="liquid" className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-ink-soft">
-              Total investido
-            </span>
-            <span className="tnum text-2xl font-semibold text-ink">
-              {formatBRL(investido)}
-            </span>
-            <span className="text-xs text-ink-muted">
-              Custo de aquisição da carteira
-            </span>
+          {/* ---------- Proventos recentes ---------- */}
+          <GlassCard variant="liquid" className="col-span-12">
+            <SectionHeader title="Proventos recentes" subtitle="Dividendos, JCP, rendimentos e juros lançados" action={<Banknote className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+            {proventosRecentes.length === 0 ? (
+              <p className="mt-4 text-sm text-ink-muted">Nenhum provento registrado ainda. Use &quot;Gerenciar&quot; em uma posição para lançar um dividendo, JCP ou rendimento.</p>
+            ) : (
+              <ul className="mt-4 flex flex-col divide-y divide-[var(--color-line)]">
+                {proventosRecentes.map((entry) => (
+                  <li key={entry.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-ink">{entry.investmentName}</span>
+                      <span className="text-xs text-ink-muted">{INCOME_LABEL[entry.type] ?? entry.type} · {formatDateBR(entry.paymentDate)}</span>
+                    </div>
+                    <span className="tnum font-semibold text-pos">+{formatBRL(entry.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </GlassCard>
 
-          <GlassCard variant="liquid" className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-ink-soft">
-              Resultado
-            </span>
-            <div className="flex items-end justify-between gap-2">
-              <span
-                className={cn(
-                  "tnum text-2xl font-semibold",
-                  toneClass(ganho),
-                )}
-              >
-                {ganho >= 0 ? "+" : ""}
-                {formatBRL(ganho)}
-              </span>
-              <TrendBadge value={rentabilidade} />
+          {/* ---------- Tabela de posições ---------- */}
+          <GlassCard variant="liquid" className="col-span-12">
+            <SectionHeader title="Posições" subtitle="Detalhamento por ativo — rentabilidade individual" />
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-ink-muted">
+                    <th className="py-3 pr-4 font-medium">Ativo</th>
+                    <th className="py-3 pr-4 font-medium">Tipo</th>
+                    <th className="py-3 pr-4 font-medium">Instituição</th>
+                    <th className="py-3 pr-4 text-right font-medium">Investido</th>
+                    <th className="py-3 pr-4 text-right font-medium">Atual</th>
+                    <th className="py-3 pr-4 text-right font-medium">Rentab.</th>
+                    <th className="py-3 text-right font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.map((p) => {
+                    const rent = p.investido > 0 ? (p.atual - p.investido) / p.investido : 0;
+                    return (
+                      <tr key={p.id} className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]">
+                        <td className="py-3 pr-4 font-medium text-ink">
+                          <div className="flex items-center gap-2">
+                            {p.nome}
+                            {p.ticker && (
+                              <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{p.ticker}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4 text-ink-soft">{INVESTMENT_TYPE_LABEL[p.tipo]}</td>
+                        <td className="py-3 pr-4 text-ink-muted">{p.instituicao}</td>
+                        <td className="tnum py-3 pr-4 text-right text-ink-soft">{formatBRL(p.investido)}</td>
+                        <td className="tnum py-3 pr-4 text-right text-ink">{formatBRL(p.atual)}</td>
+                        <td className={cn("tnum py-3 pr-4 text-right font-semibold", toneClass(rent))}>{formatPercent(rent, true)}</td>
+                        <td className="py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setManaged(p)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-ink-soft hover:text-ink"
+                          >
+                            <Settings2 className="size-3.5" />
+                            Gerenciar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <span className="text-xs text-ink-muted">
-              {posicoes.length} posições ativas
-            </span>
           </GlassCard>
-        </div>
+        </BentoGrid>
+      )}
 
-        {/* ---------- Tabela de posições ---------- */}
-        <GlassCard variant="liquid" className="col-span-12">
-          <SectionHeader
-            title="Posições"
-            subtitle="Detalhamento por ativo — rentabilidade individual"
-          />
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-ink-muted">
-                  <th className="py-3 pr-4 font-medium">Ativo</th>
-                  <th className="py-3 pr-4 font-medium">Tipo</th>
-                  <th className="py-3 pr-4 font-medium">Instituição</th>
-                  <th className="py-3 pr-4 text-right font-medium">
-                    Investido
-                  </th>
-                  <th className="py-3 pr-4 text-right font-medium">Atual</th>
-                  <th className="py-3 text-right font-medium">Rentab.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {posicoes.map((p) => {
-                  const rent = (p.atual - p.investido) / p.investido;
-                  return (
-                    <tr
-                      key={p.nome}
-                      className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]"
-                    >
-                      <td className="py-3 pr-4 font-medium text-ink">
-                        {p.nome}
-                      </td>
-                      <td className="py-3 pr-4 text-ink-soft">{p.tipo}</td>
-                      <td className="py-3 pr-4 text-ink-muted">
-                        {p.instituicao}
-                      </td>
-                      <td className="tnum py-3 pr-4 text-right text-ink-soft">
-                        {formatBRL(p.investido)}
-                      </td>
-                      <td className="tnum py-3 pr-4 text-right text-ink">
-                        {formatBRL(p.atual)}
-                      </td>
-                      <td
-                        className={cn(
-                          "tnum py-3 text-right font-semibold",
-                          toneClass(rent),
-                        )}
-                      >
-                        {formatPercent(rent, true)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
-      </BentoGrid>
+      <InvestmentManageDialog position={managed} onClose={() => setManaged(null)} onChanged={refresh} />
     </div>
   );
 }
