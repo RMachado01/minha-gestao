@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Pencil,
   Trash2,
+  Utensils,
 } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -200,12 +201,32 @@ function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Carta
   );
 }
 
+function BenefitCardItem({ record, delay, onEdit, onDelete }: { record: CreditCardRecord; delay: number; onEdit: (card: CreditCardRecord) => void; onDelete: (card: CreditCardRecord) => void }) {
+  return (
+    <GlassCard variant="liquid" interactive className="col-span-12 sm:col-span-6 lg:col-span-4">
+      <div className="cartao-reveal" style={{ animationDelay: `${delay}ms` }}>
+        <div className="relative mb-4 h-40 overflow-hidden rounded-2xl p-4" style={{ background: `linear-gradient(135deg, color-mix(in oklab, ${record.color ?? "#00a86b"} 64%, #08140f), color-mix(in oklab, ${record.color ?? "#00a86b"} 22%, #08140f))` }}>
+          <div className="relative flex h-full flex-col justify-between text-white">
+            <div className="flex items-start justify-between"><span className="grid size-9 place-items-center rounded-xl bg-white/15"><Utensils className="size-5" /></span><span className="text-sm font-semibold text-white/85">{record.brand}</span></div>
+            <div><p className="text-xs font-medium uppercase tracking-[.18em] text-white/60">{record.benefit_mode === "flex" ? "Saldo flexível" : "VR + VA"}</p><p className="mt-1 text-base font-semibold">{record.nickname}</p></div>
+          </div>
+        </div>
+        <div className="flex items-end justify-between"><div><p className="text-xs text-ink-muted">Saldo disponível</p><p className="tnum mt-1 text-2xl font-semibold text-ink">{formatBRL(record.benefit_balance)}</p></div><span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-pos">Ativo</span></div>
+        {record.benefit_mode === "separate" ? <div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-2xl bg-white/[.04] p-3"><p className="text-xs text-ink-muted">Vale-refeição</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(record.vr_balance)}</p></div><div className="rounded-2xl bg-white/[.04] p-3"><p className="text-xs text-ink-muted">Vale-alimentação</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(record.va_balance)}</p></div></div> : <p className="mt-4 rounded-2xl bg-white/[.04] p-3 text-xs text-ink-soft">Um único saldo pode ser usado em compras de alimentação.</p>}
+        <div className="mt-4 flex gap-2 border-t border-[var(--color-line)] pt-4"><button type="button" onClick={() => onEdit(record)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-ink-soft hover:border-accent"><Pencil className="size-3.5" />Editar</button><button type="button" onClick={() => onDelete(record)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-400/20 px-3 py-2 text-xs font-semibold text-neg"><Trash2 className="size-3.5" />Excluir</button></div>
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function CartoesPage() {
   const { cards: storedCards, loading, refresh } = useCreditCards();
   const [managedCard, setManagedCard] = useState<CreditCardRecord | null>(null);
   const [dialogMode, setDialogMode] = useState<"edit" | "delete">("edit");
+  const creditRecords = storedCards.filter((card) => card.card_type === "credit");
+  const benefitRecords = storedCards.filter((card) => card.card_type === "benefit");
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
-  const cartoes: Cartao[] = storedCards.map((card) => ({
+  const cartoes: Cartao[] = creditRecords.map((card) => ({
     id: card.id,
     apelido: card.nickname,
     bandeira: card.brand,
@@ -246,9 +267,9 @@ export default function CartoesPage() {
           <CreditCard className="h-5 w-5" strokeWidth={2} />
         </span>
         <div>
-          <h1 className="text-xl font-semibold text-ink">Cartões de Crédito</h1>
+          <h1 className="text-xl font-semibold text-ink">Cartões</h1>
           <p className="text-sm text-ink-muted">
-            Limite, faturas em aberto e vencimentos consolidados
+            Crédito, faturas e saldos de alimentação
           </p>
         </div>
         </div>
@@ -342,7 +363,7 @@ export default function CartoesPage() {
             <CartaoItem
               key={cartao.id}
               cartao={cartao}
-              record={storedCards[i]}
+              record={creditRecords[i]}
               delay={i * 90}
               onEdit={(card) => { setManagedCard(card); setDialogMode("edit"); }}
               onDelete={(card) => { setManagedCard(card); setDialogMode("delete"); }}
@@ -350,6 +371,11 @@ export default function CartoesPage() {
           ))}
         </BentoGrid>
       </div>
+
+      {benefitRecords.length > 0 && <div>
+        <SectionHeader title="Cartões alimentação" subtitle={`${benefitRecords.length} ${benefitRecords.length === 1 ? "cartão" : "cartões"} · compras descontam o saldo automaticamente`} />
+        <BentoGrid>{benefitRecords.map((card, index) => <BenefitCardItem key={card.id} record={card} delay={index * 90} onEdit={(item) => { setManagedCard(item); setDialogMode("edit"); }} onDelete={(item) => { setManagedCard(item); setDialogMode("delete"); }} />)}</BentoGrid>
+      </div>}
 
       {/* --- Histórico das faturas --- */}
       <GlassCard variant="liquid">

@@ -37,6 +37,11 @@ export interface TransactionSummary {
   category: string;
 }
 
+export interface AdvisorAccountContext {
+  creditCardBills?: number;
+  benefitBalance?: number;
+}
+
 export const GOAL_TYPES: { value: GoalType; label: string }[] = [
   { value: "reserve", label: "Reserva de segurança" },
   { value: "vehicle", label: "Carro" },
@@ -105,29 +110,68 @@ export function answerFinancialQuestion(
   goals: FinancialGoal[],
   selectedGoal: FinancialGoal | null,
   investmentTotal: number,
+  account: AdvisorAccountContext = {},
 ): string {
   const normalized = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const income = transactions.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
-  const expenses = transactions.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+  const expenseItems = transactions.filter((item) => item.type === "expense" || item.type === "benefit");
+  const expenses = expenseItems.reduce((sum, item) => sum + item.amount, 0);
   const balance = income - expenses;
   const avgIncome = averageIncome(transactions);
   const currency = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const monthly = new Map<string, { income: number; expenses: number }>();
+  for (const item of transactions) {
+    const month = item.occurred_on.slice(0, 7);
+    const current = monthly.get(month) ?? { income: 0, expenses: 0 };
+    if (item.type === "income") current.income += item.amount;
+    else current.expenses += item.amount;
+    monthly.set(month, current);
+  }
+  const months = [...monthly.keys()].sort().reverse();
+  const currentMonth = monthly.get(months[0] ?? "") ?? { income: 0, expenses: 0 };
+  const previousMonth = monthly.get(months[1] ?? "") ?? { income: 0, expenses: 0 };
 
   if (!transactions.length && !goals.length && investmentTotal === 0) {
     return "Ainda não há dados suficientes na sua conta. Cadastre receitas, despesas e uma meta; depois eu consigo calcular seu saldo, capacidade de aporte e prazo estimado.";
   }
 
   if (/saldo|quanto tenho|sobra|sobrou/.test(normalized)) {
-    return `Nos lançamentos disponíveis, suas receitas somam ${currency(income)} e as despesas ${currency(expenses)}, deixando saldo calculado de ${currency(balance)}. Esse valor considera apenas o que está registrado.`;
+    return `Nos lançamentos disponíveis, suas receitas somam ${currency(income)} e as despesas ${currency(expenses)}, deixando saldo calculado de ${currency(balance)}. Você ainda tem ${currency(account.benefitBalance ?? 0)} em VR/VA. Valores consideram apenas registros da conta.`;
   }
 
   if (/gasto|despesa|categoria|onde/.test(normalized)) {
     const categories = new Map<string, number>();
-    transactions.filter((item) => item.type === "expense").forEach((item) => categories.set(item.category, (categories.get(item.category) ?? 0) + item.amount));
+    expenseItems.forEach((item) => categories.set(item.category, (categories.get(item.category) ?? 0) + item.amount));
     const largest = [...categories.entries()].sort((a, b) => b[1] - a[1])[0];
     return largest
       ? `Sua maior categoria de despesas é ${largest[0]}, com ${currency(largest[1])}. Suas despesas registradas totalizam ${currency(expenses)}.`
       : "Você ainda não possui despesas registradas para eu comparar por categoria.";
+  }
+
+  if (/mes|mensal|compar|evolu|aument|diminui/.test(normalized)) {
+    if (months.length < 2) return `O mês mais recente tem ${currency(currentMonth.income)} de receitas e ${currency(currentMonth.expenses)} de despesas. Preciso de pelo menos dois meses para comparar a evolução.`;
+    const delta = previousMonth.expenses > 0 ? ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100 : null;
+    return `No mês mais recente: ${currency(currentMonth.income)} de receitas e ${currency(currentMonth.expenses)} de despesas. Gastos ${delta === null ? "não têm base anterior comparável" : `${delta > 0 ? "subiram" : "caíram"} ${Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% frente ao mês anterior`}.`;
+  }
+
+  if (/taxa|econom|poup|capacidade/.test(normalized)) {
+    const rate = currentMonth.income > 0 ? ((currentMonth.income - currentMonth.expenses) / currentMonth.income) * 100 : null;
+    return rate === null ? "Cadastre receitas no mês para eu calcular sua taxa de economia." : `Sua taxa de economia no mês mais recente é ${rate.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%, equivalente a ${currency(currentMonth.income - currentMonth.expenses)}. Aportes planejados nas metas devem caber nessa sobra.`;
+  }
+
+  if (/cartao|fatura|vr|va|aliment/.test(normalized)) {
+    return `Faturas de crédito do mês somam ${currency(account.creditCardBills ?? 0)}. Saldo disponível em cartões VR/VA: ${currency(account.benefitBalance ?? 0)}. Compras VR/VA são despesas de Alimentação e reduzem esse saldo; não contam como renda.`;
+  }
+
+  if (/reserva|emerg/.test(normalized)) {
+    const avgExpenses = months.length ? [...monthly.values()].reduce((sum, item) => sum + item.expenses, 0) / months.length : 0;
+    return avgExpenses > 0 ? `Seu gasto mensal médio registrado é ${currency(avgExpenses)}. Uma faixa ilustrativa de 3 a 6 meses seria ${currency(avgExpenses * 3)} a ${currency(avgExpenses * 6)}. Ajuste conforme estabilidade de renda, dependentes e riscos.` : "Cadastre despesas de alguns meses para eu estimar uma faixa de reserva de emergência.";
+  }
+
+  if (/posso comprar|posso gastar|cabe|viavel/.test(normalized)) {
+    const planned = goals.filter((goal) => goal.status === "active").reduce((sum, goal) => sum + monthlyContribution(goal, avgIncome), 0);
+    const freeCash = currentMonth.income - currentMonth.expenses - planned;
+    return `Após gastos do mês e aportes planejados, sua margem estimada é ${currency(freeCash)}. Isso é uma triagem, não aprovação de compra: confirme parcelas futuras, reserva e faturas antes de decidir.`;
   }
 
   if (/invest|patrimonio|aplic/.test(normalized)) {
@@ -153,5 +197,5 @@ export function answerFinancialQuestion(
     return `Você tem ${active.length} ${active.length === 1 ? "meta ativa" : "metas ativas"} e ainda precisa acumular ${currency(remaining)} para concluí-las. Selecione uma meta para obter uma projeção específica.`;
   }
 
-  return `Resumo da sua conta: saldo calculado de ${currency(balance)}, ${currency(investmentTotal)} em investimentos e ${goals.filter((goal) => goal.status === "active").length} metas ativas. Posso responder sobre saldo, gastos, maior categoria, aportes, investimentos ou prazo da meta selecionada.`;
+  return `Resumo: saldo calculado ${currency(balance)}, investimentos ${currency(investmentTotal)}, faturas ${currency(account.creditCardBills ?? 0)}, VR/VA ${currency(account.benefitBalance ?? 0)} e ${goals.filter((goal) => goal.status === "active").length} metas ativas. Pergunte sobre comparação mensal, taxa de economia, reserva, gastos, cartões, aportes ou prazo de uma meta.`;
 }
