@@ -78,23 +78,41 @@ function toQuote(result: BrapiQuoteResult): MarketQuote | null {
   };
 }
 
+async function fetchOneQuote(ticker: string, token: string, revalidateSeconds: number): Promise<{ quote: MarketQuote | null; error: string | null }> {
+  const url = `https://brapi.dev/api/quote/${encodeURIComponent(ticker)}?dividends=true&token=${token}`;
+  try {
+    const response = await fetch(url, { next: { revalidate: revalidateSeconds } });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return { quote: null, error: `brapi.dev retornou status ${response.status} para ${ticker}.${body ? ` Detalhe: ${body.slice(0, 300)}` : ""}` };
+    }
+    const data = (await response.json()) as BrapiResponse;
+    const result = data.results?.[0];
+    return { quote: result ? toQuote(result) : null, error: null };
+  } catch (err) {
+    return { quote: null, error: err instanceof Error ? err.message : `Falha de rede ao consultar ${ticker} na brapi.dev.` };
+  }
+}
+
 /**
- * Busca cotações em lote na brapi.dev. Lança erro descritivo (nunca o token)
- * quando BRAPI_TOKEN não está configurado ou a chamada falha — quem chama
- * decide como exibir isso ao usuário.
+ * Busca cotações na brapi.dev — uma requisição por ativo (o plano gratuito só
+ * permite 1 ativo por requisição), em paralelo. Lança erro descritivo (nunca
+ * o token) apenas quando BRAPI_TOKEN não está configurado ou quando NENHUM
+ * ativo retorna com sucesso; falhas isoladas de um ticker não derrubam os
+ * demais.
  */
 export async function fetchMarketQuotes(tickers: string[], revalidateSeconds: number): Promise<MarketQuote[]> {
   const token = process.env.BRAPI_TOKEN;
   if (!token) throw new Error("BRAPI_TOKEN não configurado.");
   if (tickers.length === 0) return [];
 
-  const url = `https://brapi.dev/api/quote/${encodeURIComponent(tickers.join(","))}?dividends=true&token=${token}`;
-  const response = await fetch(url, { next: { revalidate: revalidateSeconds } });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`brapi.dev retornou status ${response.status}.${body ? ` Detalhe: ${body.slice(0, 300)}` : ""}`);
+  const settled = await Promise.all(tickers.map((ticker) => fetchOneQuote(ticker, token, revalidateSeconds)));
+  const quotes = settled.map((item) => item.quote).filter((quote): quote is MarketQuote => quote !== null);
+
+  if (quotes.length === 0) {
+    const firstError = settled.find((item) => item.error)?.error;
+    if (firstError) throw new Error(firstError);
   }
 
-  const data = (await response.json()) as BrapiResponse;
-  return (data.results ?? []).map(toQuote).filter((quote): quote is MarketQuote => quote !== null);
+  return quotes;
 }
