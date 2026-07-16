@@ -5,6 +5,7 @@ import { BentoGrid } from "@/components/ui/BentoGrid";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { contasPlanejadas, type ContaPlanejada } from "@/lib/data/empty";
+import { formatDateBR } from "@/lib/format";
 import { formatBRL } from "@/lib/format";
 
 /* ─── Column definitions ─── */
@@ -69,12 +70,6 @@ function byStatus(status: ContaPlanejada["status"]) {
 
 function sumByStatus(status: ContaPlanejada["status"]) {
   return byStatus(status).reduce((s, c) => s + c.valor, 0);
-}
-
-function formatDate(iso: string) {
-  const [, , d] = iso.split("-");
-  const [, m] = iso.split("-");
-  return `${d}/${m}`;
 }
 
 /* ─── Page ─── */
@@ -170,7 +165,7 @@ export default function PlanejamentoPage() {
                     </p>
                     <div className="mt-2 flex items-center gap-2 text-xs text-ink-muted">
                       <Calendar className="h-3 w-3" />
-                      <span className="tnum">{formatDate(item.vencimento)}</span>
+                      <span className="tnum">{formatDateBR(item.vencimento, false)}</span>
                       <span className="rounded-full bg-[var(--color-surface-raised)] px-2 py-0.5 text-[10px] font-medium">
                         {item.categoria}
                       </span>

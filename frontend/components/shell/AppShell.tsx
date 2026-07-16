@@ -7,7 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
-const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade"]);
+const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade", "/redefinir-senha"]);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

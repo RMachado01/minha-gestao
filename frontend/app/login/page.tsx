@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ confirmed?: string; error?: string }>;
+  searchParams: Promise<{ confirmed?: string; error?: string; reset?: string }>;
 }) {
   const params = await searchParams;
 
@@ -60,6 +60,12 @@ export default async function LoginPage({
         {params.error && (
           <p role="alert" className="mt-6 rounded-2xl bg-rose-400/10 p-4 text-sm text-neg">
             Não foi possível confirmar sua conta. Solicite um novo link e tente novamente.
+          </p>
+        )}
+
+        {params.reset === "1" && (
+          <p role="status" className="mt-6 rounded-2xl bg-emerald-400/10 p-4 text-sm text-pos">
+            Senha atualizada com sucesso. Entre com sua nova senha.
           </p>
         )}
 

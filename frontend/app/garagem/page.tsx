@@ -9,8 +9,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { VehicleManager } from "@/components/uber/VehicleManager";
 import { formatBRL } from "@/lib/format";
+import { calcEnergyConsumed, calcEnergyCost, type Powertrain } from "@/lib/uberCalc";
 
-type Powertrain = "electric" | "hybrid" | "combustion";
 type GarageEntry = { date: string; km: number; totalCost: number };
 
 export default function GaragemPage() {
@@ -29,12 +29,12 @@ export default function GaragemPage() {
 
   const distanceKm = distanceMode === "distance" ? km : Math.max(odometerEnd - odometerStart, 0);
 
-  const energyConsumed = useMemo(() => {
-    if (powertrain === "electric") return (distanceKm * efficiency) / 100;
-    return efficiency > 0 ? distanceKm / efficiency : 0;
-  }, [distanceKm, efficiency, powertrain]);
+  const energyConsumed = useMemo(
+    () => calcEnergyConsumed(distanceKm, efficiency, powertrain),
+    [distanceKm, efficiency, powertrain],
+  );
 
-  const energyCost = useMemo(() => energyConsumed * unitPrice, [energyConsumed, unitPrice]);
+  const energyCost = useMemo(() => calcEnergyCost(energyConsumed, unitPrice), [energyConsumed, unitPrice]);
   const totalCost = useMemo(() => energyCost + otherCosts, [energyCost, otherCosts]);
   const costPerKm = distanceKm > 0 ? totalCost / distanceKm : 0;
 

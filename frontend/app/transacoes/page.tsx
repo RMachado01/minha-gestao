@@ -24,7 +24,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MoneyInput } from "@/components/forms/MoneyInput";
 
 import type { Transacao } from "@/lib/data/empty";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatDateBR } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
 
@@ -95,11 +95,6 @@ function toTransacao(item: DbTransaction): Transacao {
     recorrente: item.recurring,
     formaPagamento: item.payment_method ?? (item.type === "benefit" ? "benefit" : "pix"),
   };
-}
-
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
 }
 
 export default function TransacoesPage() {
@@ -342,7 +337,7 @@ export default function TransacoesPage() {
                   transition={{ delay: reduceMotion ? 0 : Math.min(index * 0.025, 0.3), duration: reduceMotion ? 0.01 : 0.28 }}
                   className={`group border-t border-[var(--color-line)] transition-colors hover:bg-white/[0.03] ${createdId === t.id ? "bg-emerald-400/10" : ""}`}
                 >
-                  <td className="tnum py-3 pr-3 text-ink-soft">{formatDate(t.data)}</td>
+                  <td className="tnum py-3 pr-3 text-ink-soft">{formatDateBR(t.data)}</td>
                   <td className="py-3 px-3 font-medium text-ink">{t.descricao}</td>
                   <td className="py-3 px-3 text-ink-soft">{t.categoria}</td>
                   <td
