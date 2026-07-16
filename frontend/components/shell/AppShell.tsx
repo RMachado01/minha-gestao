@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { FinancialAdvisorWidget } from "@/components/advisor/FinancialAdvisorWidget";
 
 const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade"]);
 
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </div>
       <OnboardingTour />
+      <FinancialAdvisorWidget />
     </div>
   );
 }

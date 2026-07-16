@@ -6,6 +6,8 @@ import { useState } from "react";
 import type { CreditCardRecord } from "@/lib/supabase/useCreditCards";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { MoneyInput, parseBRL } from "@/components/forms/MoneyInput";
+import { SelectField } from "@/components/forms/SelectField";
 
 type DialogMode = "edit" | "delete";
 
@@ -24,6 +26,7 @@ export function CardManagementDialog({
   const reduceMotion = useReducedMotion();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [benefitMode, setBenefitMode] = useState<"separate" | "flex">(card?.benefit_mode ?? "separate");
 
   async function updateCard(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,13 +41,18 @@ export function CardManagementDialog({
       setSaving(false);
       return;
     }
+    const isBenefit = card.card_type === "benefit";
     const { error: updateError } = await supabase.from("credit_cards").update({
       nickname: String(data.get("nickname")).trim(),
       brand: String(data.get("brand")),
-      total_limit: Number(data.get("limit")),
+      total_limit: isBenefit ? 0 : parseBRL(data.get("limit")),
       color: String(data.get("color")),
-      closing_day: Number(data.get("closing_day")),
-      due_day: Number(data.get("due_day")),
+      closing_day: isBenefit ? 1 : Number(data.get("closing_day")),
+      due_day: isBenefit ? 1 : Number(data.get("due_day")),
+      benefit_mode: isBenefit ? benefitMode : null,
+      vr_balance: isBenefit && benefitMode === "separate" ? parseBRL(data.get("vr_balance")) || 0 : 0,
+      va_balance: isBenefit && benefitMode === "separate" ? parseBRL(data.get("va_balance")) || 0 : 0,
+      flex_balance: isBenefit && benefitMode === "flex" ? parseBRL(data.get("flex_balance")) || 0 : 0,
     }).eq("id", card.id);
     if (updateError) {
       setError("Não foi possível atualizar o cartão.");
@@ -125,11 +133,16 @@ export function CardManagementDialog({
             ) : (
               <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={updateCard}>
                 <label className="field-label">Apelido<input className="field" name="nickname" defaultValue={card.nickname} minLength={2} required /></label>
-                <label className="field-label">Bandeira<select className="field" name="brand" defaultValue={card.brand}><option>Mastercard</option><option>Visa</option><option>Elo</option><option>American Express</option></select></label>
-                <label className="field-label">Limite total (R$)<input className="field tnum" type="number" min="0" step="0.01" name="limit" defaultValue={card.total_limit} required /></label>
-                <label className="field-label">Cor<select className="field" name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></select></label>
-                <label className="field-label">Dia de fechamento<input className="field" type="number" min="1" max="31" name="closing_day" defaultValue={card.closing_day} required /></label>
-                <label className="field-label">Dia de vencimento<input className="field" type="number" min="1" max="31" name="due_day" defaultValue={card.due_day} required /></label>
+                <label className="field-label">{card.card_type === "benefit" ? "Operadora" : "Bandeira"}<input className="field" name="brand" defaultValue={card.brand} required /></label>
+                <label className="field-label">Cor<SelectField name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></SelectField></label>
+                {card.card_type === "credit" ? <>
+                  <label className="field-label">Limite total<MoneyInput name="limit" defaultValue={card.total_limit} required /></label>
+                  <label className="field-label">Dia de fechamento<input className="field" type="number" min="1" max="31" name="closing_day" defaultValue={card.closing_day} required /></label>
+                  <label className="field-label">Dia de vencimento<input className="field" type="number" min="1" max="31" name="due_day" defaultValue={card.due_day} required /></label>
+                </> : <>
+                  <label className="field-label">Organização do saldo<SelectField value={benefitMode} onChange={(event) => setBenefitMode(event.target.value as "separate" | "flex")}><option value="separate">VR e VA separados</option><option value="flex">Saldo flexível</option></SelectField></label>
+                  {benefitMode === "separate" ? <><label className="field-label">Saldo VR<MoneyInput name="vr_balance" defaultValue={card.vr_balance} /></label><label className="field-label">Saldo VA<MoneyInput name="va_balance" defaultValue={card.va_balance} /></label></> : <label className="field-label">Saldo flexível<MoneyInput name="flex_balance" defaultValue={card.flex_balance} /></label>}
+                </>}
                 {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2">{error}</p>}
                 <div className="flex flex-wrap justify-end gap-3 sm:col-span-2">
                   <button type="button" onClick={onClose} className="rounded-2xl border border-[var(--color-line)] px-4 py-2.5 text-sm font-semibold text-ink-soft hover:text-ink">Cancelar</button>

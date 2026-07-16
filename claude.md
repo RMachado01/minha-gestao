@@ -10,21 +10,22 @@ Sistema web de gestão financeira pessoal, com foco em:
 - Controle de entradas e saídas (fixas e variáveis)
 - Gastos recorrentes (assinaturas, parcelas, contas mensais)
 - Acompanhamento de investimentos
-- Controle de múltiplos cartões de crédito (mínimo 3)
+- Controle de cartões de crédito e cartões-benefício VR/VA/flexível
 - Módulo específico para motorista de app (Uber): lucro bruto, custos (gasolina etc.) e lucro líquido, com KPIs de tendência
 
 Usuário único (ou multiusuário simples) — não é um SaaS multi-tenant complexo neste primeiro momento, mas a modelagem deve deixar a porta aberta para isso (todo dado pendurado em `user_id`).
 
-### 1.1 Estado atual do projeto — 12/07/2026
+### 1.1 Estado atual do projeto — 15/07/2026
 
 O projeto deixou de ser apenas uma especificação e já possui uma fundação executável:
 
-- **Frontend:** Next.js 16.2.10, React 19, Tailwind CSS 4 e Recharts, com dashboards navegáveis e dados mockados.
+- **Frontend:** Next.js 16.2.10, React 19, Tailwind CSS 4 e Recharts, com dados reais da conta, estados vazios e dados de demonstração isolados.
 - **Backend:** FastAPI com schemas Pydantic, modelos SQLAlchemy assíncronos e rotas versionadas em `/api/v1`.
-- **Banco e autenticação:** migração inicial do Supabase/Postgres com RLS; clientes SSR/browser e proxy de sessão preparados no frontend.
+- **Banco e autenticação:** projeto Supabase/Postgres ativo, sete migrations aplicadas, RLS, Auth SSR, trigger de perfil e RPCs financeiras transacionais.
 - **Versionamento:** repositório privado [RMachado01/minha-gestao](https://github.com/RMachado01/minha-gestao), branch `main`.
 - **Execução local:** frontend em `http://localhost:3000`; API em `http://localhost:8000`; OpenAPI em `/docs`.
-- **Limite atual:** formulários ainda usam estado local/mock. Persistência real será ativada após criar o projeto Supabase e configurar as variáveis de ambiente.
+- **Deploy:** frontend vinculado à Vercel e Supabase de produção; alterações locais mais recentes ainda precisam de commit e novo deploy.
+- **Limite atual:** parte dos módulos legados ainda precisa concluir persistência e testes E2E; o FastAPI está estruturado, mas o frontend usa Supabase diretamente nos fluxos já integrados.
 
 ---
 
@@ -58,19 +59,17 @@ A ideia original (TypeScript + FastAPI + PostgreSQL) é sólida. Ajustes recomen
 ```
 /backend        -> FastAPI (Python)
   /app
-    /models     -> SQLAlchemy models
-    /schemas    -> Pydantic schemas
-    /routers    -> endpoints por domínio
-    /services   -> regras de negócio (cálculo de saldo, recorrência, KPI)
-    /jobs       -> geração automática de lançamentos recorrentes
-  /alembic
+    /api        -> rotas versionadas e endpoints por domínio
+    /core       -> configuração, segurança e dependências centrais
+    /db         -> sessão e infraestrutura de banco
+    /models     -> modelos SQLAlchemy
+    /schemas    -> contratos Pydantic
+    /services   -> regras de negócio e integrações
 /frontend       -> Next.js + TypeScript
-  /src
-    /app             -> rotas, layouts, loading/error boundaries
-    /features        -> módulos de negócio autocontidos
-    /components/ui   -> primitives do design system
-    /lib             -> API client, formatos, utilitários compartilhados
-    /styles          -> tokens e estilos globais
+  /app               -> App Router, rotas, layouts e páginas
+  /components        -> UI, shell, formulários, cartões, onboarding e assessor
+  /lib               -> Supabase, consultas, formatos e regras compartilhadas
+  /public            -> ativos estáticos
 docker-compose.yml
 /supabase
   /migrations   -> schema SQL, constraints, índices e políticas RLS
@@ -78,7 +77,7 @@ docker-compose.yml
 DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 ```
 
-> Ainda não existe `docker-compose.yml`; ele permanece como melhoria futura. O repositório raiz é o único repositório Git — não criar `.git` dentro de `frontend` ou `backend`.
+> Ainda não existem `docker-compose.yml` nem estrutura Alembic; permanecem como melhorias futuras. As migrations ativas vivem em `supabase/migrations`. O repositório raiz é o único repositório Git — não criar `.git` dentro de `frontend` ou `backend`.
 
 ### 2.3 Princípios de arquitetura do frontend
 
@@ -132,10 +131,10 @@ DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 - status: `pending` | `paid` | `received`
 - payment_method: `pix` | `credit` | `cash` | `benefit`
 - credit_card_id (obrigatório quando `payment_method=credit`)
-- benefit_kind: `vr` | `va` | `flex` (quando `tipo=benefit`)
+- benefit_kind: `vr` | `va` | `flex` (quando `payment_method=benefit`)
 - idempotency_key
 
-> Regra: lançamentos de VR/VA usam categoria `Alimentação` automaticamente. Compras no crédito sempre referenciam um cartão cadastrado.
+> Regra: VR/VA nunca é renda. A compra continua sendo uma `expense`, usa `payment_method=benefit`, recebe categoria `Alimentação` automaticamente e debita o saldo do cartão-benefício de forma atômica. Compras no crédito sempre referenciam um cartão cadastrado.
 
 **RecurrenceRule** (para assinaturas, parcelas e contas fixas)
 - id, user_id, descrição
@@ -163,11 +162,13 @@ DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 
 > Permite montar gráfico de evolução patrimonial e rentabilidade (valor_atual - valor_investido) / valor_investido.
 
-### 3.3 Cartões de Crédito
+### 3.3 Cartões de Crédito e Benefícios
 
 **CreditCard**
-- id, user_id, apelido, bandeira, limite_total
-- dia_fechamento, dia_vencimento, ativo
+- id, user_id, apelido, bandeira/operadora, `card_type` (`credit` | `benefit`)
+- crédito: limite_total, dia_fechamento, dia_vencimento
+- benefício: `benefit_mode` (`separate` | `flex`), `vr_balance`, `va_balance`, `flex_balance`
+- cor personalizada, ativo
 
 **CreditCardTransaction**
 - id, credit_card_id, descrição, valor, data_compra
@@ -178,7 +179,7 @@ DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 **CreditCardBill** (fatura consolidada, calculada ou materializada)
 - id, credit_card_id, mês_referencia, valor_total, status (`aberta` | `fechada` | `paga`)
 
-> Regra: o sistema deve permitir cadastrar no mínimo 3 cartões e exibir, por cartão: limite usado, limite disponível, valor da fatura atual e próximo vencimento.
+> Regra: cartões de crédito exibem limite, fatura e vencimento. Cartões-benefício exibem saldos VR/VA separados ou saldo flexível. Compras de benefício não entram na fatura de crédito.
 
 ### 3.4 Módulo Uber (motorista de app)
 
@@ -223,17 +224,20 @@ DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 - CRUD de transações com categorização
 - Filtro por tipo (fixo/variável, recorrente/único)
 - Marcar gasto como recorrente mensal ao cadastrar (vira uma `RecurrenceRule`)
+- Atribuir despesa a cartão de crédito ou benefício cadastrado
+- Formatação monetária BRL automática durante a digitação
 
 ### 4.3 Investimentos
 - CRUD de investimentos
 - Histórico de valor (snapshot manual ou importado)
 - Gráfico de evolução e rentabilidade
 
-### 4.4 Cartões de Crédito
-- CRUD de cartões (mín. 3)
+### 4.4 Cartões
+- CRUD de cartões de crédito e cartões-benefício VR/VA/flexível
 - Lançamento de compras (à vista ou parcelada)
 - Visão de fatura atual por cartão
 - Visão consolidada (soma de todas as faturas em aberto)
+- Débito transacional do saldo-benefício com bloqueio de saldo insuficiente
 
 ### 4.5 Uber / Motorista de App
 - Lançamento diário de receita bruta e custos
@@ -254,6 +258,8 @@ DEPLOYMENT.md   -> checklist de Supabase, Vercel e GitHub
 7. Registros financeiros relevantes não devem ser apagados fisicamente sem política explícita; usar cancelamento/estorno ou soft delete com trilha de auditoria.
 8. Alterações críticas registram `created_at`, `updated_at`, autor e versão. Concorrência deve ser detectada para evitar que uma aba sobrescreva outra silenciosamente.
 9. O backend sempre deriva `user_id` da sessão; nunca confiar em um `user_id` recebido do cliente.
+10. VR/VA/flexível são meios de pagamento de despesas, não receitas. O débito e a criação da transação ocorrem na mesma RPC para garantir rollback integral em caso de erro.
+11. Cartões-benefício não participam de limite nem fatura de crédito; saldo insuficiente impede o lançamento.
 
 ### 5.1 Convenções da API
 
@@ -418,7 +424,7 @@ Painéis laterais (`Sheet`) servem para inspeção e edição rápida de transa�
 Inspirada no dashboard da Vercel de 2026:
 
 - **Desktop implementado:** sidebar Liquid Glass agrupada em `Finanças`, `Patrimônio`, `Trabalho` e `Conta`.
-- **Mobile implementado:** barra inferior flutuante com `Início`, `Fluxo`, ação central `Adicionar`, `Cartões` e `Mais`, respeitando safe areas e alcance com uma mão.
+- **Mobile implementado:** barra inferior flutuante com `Início`, `Fluxo`, ação central `Adicionar`, `Cartões` e `Mais`; o drawer `Mais` expõe todas as funções agrupadas, respeitando safe areas e alcance com uma mão.
 - Exibir primeiro os destinos mais frequentes; módulos avançados não devem competir visualmente com ações diárias.
 - Item ativo tem texto, ícone e contraste — nunca somente uma barra colorida.
 - Abas são usadas apenas para visões irmãs da mesma entidade, com no máximo 5–7 itens no desktop e 3–4 no mobile. O estado ativo fica na URL.
@@ -485,39 +491,46 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Tema claro/escuro persistido, shell responsivo, superfícies sólidas no conteúdo e Liquid Glass restrito a navegação/controles.
 - Paleta de gráficos baseada em CSS variables, com contraste próprio para temas claro e escuro; `theme-color` do navegador acompanha o tema.
 - Cabeçalhos de página reutilizáveis e navegação desktop agrupada; mobile usa barra inferior de cinco destinos.
-- Formulário de receitas, despesas e VR/VA persistido na Supabase; compras no crédito exigem um cartão real e gravam `credit_card_id`.
+- Formulário de receitas e despesas persistido na Supabase; VR/VA/flexível aparece somente como meio de pagamento de uma despesa.
+- Compras no crédito exigem cartão de crédito real e gravam `credit_card_id`; compras-benefício usam RPC atômica, debitam o saldo correto e recebem categoria `Alimentação`.
 - Histórico de transações consulta dados reais da Supabase e persiste edição/exclusão; lançamentos recém-criados podem abrir e destacar imediatamente sua linha no extrato.
 - Feedback de sucesso usa Motion com confirmação visual, resumo do lançamento e próxima ação; transições de página respeitam `prefers-reduced-motion`.
 - Rolagem usa Lenis no desktop com fallback nativo para toque e movimento reduzido; modais preservam rolagem interna independente.
 - Lançamentos aceitam categorias personalizadas persistidas com `category_id`, e compras no crédito apresentam cartões cadastrados como escolhas visuais.
 - Selects nativos recebem superfície, seta e estados de foco consistentes; o fundo global usa camadas fixas contínuas sem emendas durante o scroll.
-- Campo monetário reutilizável com prefixo `R$` e preview do cartão, fechamento, vencimento, limite e fatura atual.
+- `MoneyInput` reutilizável mascara centavos automaticamente no padrão `pt-BR`, mantém prefixo `R$` sem sobreposição e converte para decimal canônico no submit.
+- Seleção de cartão apresenta preview de crédito ou saldo-benefício; cartões VR/VA separados permitem escolher a carteira e cartões flexíveis usam saldo único.
 - Inputs com prefixo monetário e ícones usam espaçamento estrutural próprio, sem sobrepor conteúdo em temas claro ou escuro.
 - Módulo **Sonhos e Metas** com objetivo, descrição, valor-alvo, saldo atual, aporte fixo ou percentual da renda, data desejada e cenário preferido.
 - Projeções comparativas para poupança, CDB, Tesouro Direto, ações/dividendos e taxa personalizada; hipóteses são editáveis e apresentadas como simulação bruta, não promessa de retorno.
-- Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC; consultor contextual responde perguntas sobre saldo, gastos, aportes, patrimônio e prazo usando somente dados reais da conta.
+- Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC.
+- Assessor financeiro global fica fixo no shell autenticado e responde, em qualquer aba, sobre saldo, comparação mensal, taxa de economia, categorias, faturas, VR/VA, reserva, investimentos e prazo das metas usando somente dados reais da conta. Hoje é um motor contextual local baseado em regras, sem LLM e sem promessa de aconselhamento profissional.
 - Cadastro de cartões persistido na Supabase e calendário de vencimentos baseado no mês atual.
 - Cartões existentes podem ser editados ou arquivados com confirmação; a remoção preserva compras e faturas históricas vinculadas.
 - A cor de destaque personalizada controla gradientes de botões, navegação e estados interativos por meio de tokens derivados.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
 - Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
-- Tour guiado vinculado ao usuário no primeiro login.
+- Tour guiado de cinco etapas no primeiro login usa spotlight e âncoras reais em visão geral, novo lançamento, cartões, metas e configurações; no mobile abre o drawer quando o alvo está em `Mais`.
 - Configurações de perfil e estrutura inicial de grupo familiar.
 - FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares.
-- Cinco migrations Supabase com constraints, índices, RLS, consentimento LGPD, views `security_invoker`, trigger de perfil, metas/eventos e RPCs endurecidas.
-- Build de produção, TypeScript, ESLint e compilação Python validados.
+- Sete migrations Supabase aplicadas no projeto remoto: schema inicial/completo, LGPD, hardening, metas/eventos, cartões-benefício e hardening da RPC de metas.
+- Views financeiras e RPCs de benefício/metas usam `security_invoker`; RLS restringe os dados a `auth.uid()` e os testes de rollback transacional passaram.
+- A função `delete_own_account()` permanece `security definer` intencionalmente para exclusão LGPD; exige sessão, usa `search_path` vazio e só pode ser executada pelo papel `authenticated`.
+- Build de produção e ESLint validados. Em pastas sincronizadas pelo OneDrive, usar `NEXT_DIST_DIR=.next-build` quando houver lock em `.next`.
 - Repositório Git privado publicado e sincronizado em `origin/main`.
 
 ### 7.2 Próximos passos prioritários
 
-1. Aplicar `supabase/migrations/202607160001_goals_and_events.sql` no projeto Supabase existente e validar RLS do módulo com duas contas.
-2. Persistir perfil, investimentos, planejamento, recorrências, garagem e diário Uber; o backend deve recalcular valores financeiros e de consumo.
-3. Implementar recuperação de senha e reenvio de confirmação de e-mail.
-4. Adicionar políticas familiares que permitam acesso por `household_id` conforme papel, sem ampliar as políticas antes dos fluxos estarem definidos.
-5. Gerar o cliente TypeScript pelo OpenAPI e padronizar envelopes de erro.
-6. Criar testes unitários de dinheiro/consumo, integração da API e E2E dos fluxos críticos.
-7. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations.
-8. Definir a hospedagem de produção do FastAPI e configurar `NEXT_PUBLIC_API_URL` quando o frontend começar a consumi-lo.
+1. Revisar e mesclar o PR da implementação mais recente; aguardar o deploy da Vercel e executar smoke test autenticado em produção.
+2. Ativar **Leaked Password Protection** em Supabase → Authentication → Security/Attack Protection.
+3. Revisar os avisos de performance antigos do Supabase Advisor: chamadas repetidas a `auth.uid()` nas policies e FKs sem índice.
+4. Validar isolamento RLS com duas contas reais para cartões-benefício, metas, eventos e transações.
+5. Persistir os módulos legados ainda incompletos — perfil, investimentos, planejamento, recorrências, garagem e diário Uber — e manter recálculos financeiros no servidor.
+6. Implementar recuperação de senha e reenvio de confirmação de e-mail.
+7. Adicionar políticas familiares por `household_id` e papel somente após definir os fluxos de convite e consentimento.
+8. Gerar o cliente TypeScript pelo OpenAPI, padronizar erros e decidir quando cada fluxo deve usar FastAPI em vez de acesso direto ao Supabase.
+9. Criar testes unitários do `MoneyInput`/consumo, integração das RPCs e E2E de login, lançamento, benefício, cartão, meta, tour e navegação mobile.
+10. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations; definir hospedagem do FastAPI antes de configurar `NEXT_PUBLIC_API_URL`.
 
 ### 7.3 Comandos locais
 
