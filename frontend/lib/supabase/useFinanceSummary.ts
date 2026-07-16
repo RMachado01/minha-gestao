@@ -48,6 +48,7 @@ export interface FinanceSummary {
     trendSaldo: number;
     trendEntradas: number;
     trendSaidas: number;
+    trendEconomia: number;
   };
   gastosPorCategoria: GastoCategoria[];
   gastosTotal: number;
@@ -59,7 +60,7 @@ const EMPTY_SUMMARY: FinanceSummary = {
   error: "",
   fluxoMensal: [],
   fluxoAnual: [],
-  fluxoKpis: { entradas: 0, saidas: 0, saldo: 0, economiaPct: 0, trendSaldo: 0, trendEntradas: 0, trendSaidas: 0 },
+  fluxoKpis: { entradas: 0, saidas: 0, saldo: 0, economiaPct: 0, trendSaldo: 0, trendEntradas: 0, trendSaidas: 0, trendEconomia: 0 },
   gastosPorCategoria: [],
   gastosTotal: 0,
   gastosHistorico: [],
@@ -122,15 +123,18 @@ export function useFinanceSummary(): FinanceSummary {
     const prevTotals = byMonth.get(prevMonthKey) ?? emptyMonth();
     const saldoAtual = currentTotals.entradas - currentTotals.saidas;
     const saldoAnterior = prevTotals.entradas - prevTotals.saidas;
+    const economiaPctAtual = currentTotals.entradas > 0 ? saldoAtual / currentTotals.entradas : 0;
+    const economiaPctAnterior = prevTotals.entradas > 0 ? saldoAnterior / prevTotals.entradas : 0;
 
     const fluxoKpis = {
       entradas: currentTotals.entradas,
       saidas: currentTotals.saidas,
       saldo: saldoAtual,
-      economiaPct: currentTotals.entradas > 0 ? saldoAtual / currentTotals.entradas : 0,
+      economiaPct: economiaPctAtual,
       trendSaldo: pct(saldoAtual, saldoAnterior),
       trendEntradas: pct(currentTotals.entradas, prevTotals.entradas),
       trendSaidas: pct(currentTotals.saidas, prevTotals.saidas),
+      trendEconomia: pct(economiaPctAtual, economiaPctAnterior),
     };
 
     // Fluxo anual: Jan–Dez do ano corrente.

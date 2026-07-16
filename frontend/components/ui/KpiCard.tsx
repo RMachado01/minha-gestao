@@ -89,15 +89,15 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <div className="flex items-end justify-between gap-2">
-        <span className={cn("tnum text-2xl font-semibold", toneClass[tone])}>
+      <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
+        <span className={cn("tnum min-w-0 shrink break-words text-2xl font-semibold", toneClass[tone])}>
           {numericValue !== undefined && formatValue ? (
             <AnimatedValue target={numericValue} format={formatValue} decimals={decimals} />
           ) : (
             value
           )}
         </span>
-        {trend !== undefined && <TrendBadge value={trend} invert={invertTrend} />}
+        {trend !== undefined && <TrendBadge value={trend} invert={invertTrend} className="shrink-0" />}
       </div>
       {sparklineData && sparklineData.length > 1 && (
         <Sparkline data={sparklineData} color={sparkColor[tone]} height={30} />

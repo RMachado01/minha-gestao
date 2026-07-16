@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Bot, ChevronDown, LoaderCircle, RefreshCw, Send, Sparkles, X } from "lucide-react";
-import { answerFinancialQuestion, type FinancialGoal, type TransactionSummary } from "@/lib/goals";
+import { answerFinancialQuestion, computeInsights, type FinancialGoal, type Insight, type TransactionSummary } from "@/lib/goals";
 import { createClient } from "@/lib/supabase/client";
 import { SelectField } from "@/components/forms/SelectField";
 
 const QUICK_QUESTIONS = ["Como estão meus gastos este mês?", "Qual minha taxa de economia?", "Como está minha reserva?", "Quanto tenho em cartões?"];
+
+const INSIGHT_TONE: Record<Insight["tone"], string> = {
+  pos: "border-emerald-400/25 bg-emerald-400/10 text-pos",
+  neg: "border-rose-400/25 bg-rose-400/10 text-neg",
+  warn: "border-amber-400/25 bg-amber-400/10 text-warn",
+  neutral: "border-[var(--color-line)] bg-white/[.04] text-ink-soft",
+};
 
 interface AccountData {
   transactions: TransactionSummary[];
@@ -59,6 +66,10 @@ export function FinancialAdvisorWidget() {
   }, []);
 
   const selectedGoal = useMemo(() => data.goals.find((goal) => goal.id === selectedGoalId) ?? null, [data.goals, selectedGoalId]);
+  const insights = useMemo(
+    () => (loaded ? computeInsights(data.transactions, data.goals, { creditCardBills: data.creditCardBills, benefitBalance: data.benefitBalance }) : []),
+    [loaded, data],
+  );
 
   function ask(value = question) {
     const text = value.trim();
@@ -78,7 +89,19 @@ export function FinancialAdvisorWidget() {
         {open && <motion.section role="dialog" aria-label="Assessor financeiro" data-lenis-prevent className="liquid-glass-hero fixed inset-x-3 bottom-[9.7rem] z-[59] flex max-h-[68dvh] flex-col overflow-hidden rounded-[1.75rem] shadow-2xl sm:left-auto sm:w-[430px] lg:bottom-20 lg:right-6" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .97 }}>
           <header className="flex items-center gap-3 border-b border-[var(--color-line)] p-4"><span className="grid size-10 place-items-center rounded-2xl bg-accent/10 text-accent"><Bot className="size-5" /></span><div className="min-w-0 flex-1"><h2 className="font-semibold text-ink">Assessor da sua conta</h2><p className="text-xs text-ink-muted">Análises com seus dados cadastrados</p></div><button type="button" onClick={() => void load()} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5" aria-label="Atualizar dados"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /></button><button type="button" onClick={() => setOpen(false)} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5" aria-label="Fechar"><X className="size-4" /></button></header>
           {data.goals.length > 0 && <div className="border-b border-[var(--color-line)] px-4 py-3"><label className="text-xs font-medium text-ink-muted">Meta usada nas projeções<SelectField className="mt-1 min-h-10 py-2 text-sm" value={selectedGoalId} onChange={(event) => setSelectedGoalId(event.target.value)}><option value="">Visão geral</option>{data.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</SelectField></label></div>}
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-5 ${message.role === "assistant" ? "bg-white/[.055] text-ink-soft" : "ml-auto bg-accent text-white"}`}>{message.text}</div>)}{loading && <p className="flex items-center gap-2 text-xs text-ink-muted"><LoaderCircle className="size-4 animate-spin" />Atualizando sua conta...</p>}{error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-xs text-neg">{error}</p>}</div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+            {insights.length > 0 && (
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted"><Sparkles className="size-3" />Destaques da sua conta</p>
+                {insights.map((insight) => (
+                  <div key={insight.id} className={`rounded-2xl border px-3.5 py-3 text-sm leading-5 ${INSIGHT_TONE[insight.tone]}`}>{insight.text}</div>
+                ))}
+              </div>
+            )}
+            {messages.map((message, index) => <div key={`${message.role}-${index}`} className={`max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-5 ${message.role === "assistant" ? "bg-white/[.055] text-ink-soft" : "ml-auto bg-accent text-white"}`}>{message.text}</div>)}
+            {loading && <p className="flex items-center gap-2 text-xs text-ink-muted"><LoaderCircle className="size-4 animate-spin" />Atualizando sua conta...</p>}
+            {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-xs text-neg">{error}</p>}
+          </div>
           <div className="border-t border-[var(--color-line)] p-4"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{QUICK_QUESTIONS.map((item) => <button key={item} type="button" onClick={() => ask(item)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-ink-soft hover:border-accent">{item}</button>)}</div><div className="relative"><input className="field pr-12" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); ask(); } }} placeholder="Pergunte sobre sua conta..." aria-label="Pergunta ao assessor" /><button type="button" onClick={() => ask()} className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl bg-accent text-white" aria-label="Enviar"><Send className="size-4" /></button></div><p className="mt-2 text-[10px] leading-4 text-ink-muted">Simulações não são garantia de retorno nem substituem orientação profissional. <Link href="/metas" className="font-semibold text-accent">Abrir metas</Link></p></div>
         </motion.section>}
       </AnimatePresence>
