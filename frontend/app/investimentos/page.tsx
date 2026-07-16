@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { LineChart, Wallet, Layers, Banknote, Landmark, Settings2, Radar, BarChart3 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -33,6 +34,23 @@ function toneClass(value: number): string {
   return value >= 0 ? "text-pos" : "text-neg";
 }
 
+/** Linhas de esqueleto — um ticker ainda não resolvido por coluna, enquanto o radar carrega aos poucos. */
+function SkeletonRows({ count, columns }: { count: number; columns: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, row) => (
+        <tr key={`skeleton-${row}`} className="border-b border-[var(--color-line)] last:border-0">
+          {Array.from({ length: columns }).map((__, col) => (
+            <td key={col} className="py-3 pr-4">
+              <div className="h-4 w-full max-w-24 animate-pulse rounded-full bg-white/10" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
 export default function InvestimentosPage() {
   const { loading, positions, evolucaoPatrimonial, alocacao, proventosRecentes, kpis, refresh } = useInvestments();
   const [managed, setManaged] = useState<InvestmentPosition | null>(null);
@@ -43,6 +61,10 @@ export default function InvestimentosPage() {
   const carteiraTickers = positions.map((p) => p.ticker).filter((ticker): ticker is string => Boolean(ticker));
   const carteiraQuotes = usePortfolioQuotes(carteiraTickers);
   const dividendWatchlist = useDividendWatchlist();
+  const reduceMotion = useReducedMotion();
+  const rowMotion = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0 } };
 
   return (
     <div className="flex flex-col gap-6">
@@ -266,9 +288,7 @@ export default function InvestimentosPage() {
         {carteiraTickers.length > 0 && (
           <GlassCard variant="liquid" className="col-span-12">
             <SectionHeader title="Cotações da carteira" subtitle="Ativos com ticker cadastrado" action={<BarChart3 className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
-            {carteiraQuotes.loading ? (
-              <p className="mt-4 text-sm text-ink-muted">Carregando cotações...</p>
-            ) : carteiraQuotes.error ? (
+            {carteiraQuotes.error && carteiraQuotes.quotes.length === 0 && carteiraQuotes.pending.length === 0 ? (
               <p className="mt-4 text-sm text-ink-muted">{carteiraQuotes.error}</p>
             ) : (
               <div className="overflow-x-auto">
@@ -284,21 +304,30 @@ export default function InvestimentosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {carteiraQuotes.quotes.map((quote) => (
-                      <tr key={quote.ticker} className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]">
-                        <td className="py-3 pr-4 font-medium text-ink">
-                          <div className="flex items-center gap-2">
-                            <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
-                            <span className="text-ink-soft">{quote.name}</span>
-                          </div>
-                        </td>
-                        <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
-                        <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
-                        <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayHigh !== null ? formatBRL(quote.dayHigh) : "—"}</td>
-                        <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayLow !== null ? formatBRL(quote.dayLow) : "—"}</td>
-                        <td className="tnum py-3 text-right text-ink-muted">{quote.volume !== null ? formatCompactNumber(quote.volume) : "—"}</td>
-                      </tr>
-                    ))}
+                    <AnimatePresence initial={false}>
+                      {carteiraQuotes.quotes.map((quote) => (
+                        <motion.tr
+                          key={quote.ticker}
+                          layout
+                          {...rowMotion}
+                          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className="border-b border-[var(--color-line)] last:border-0 hover:bg-[rgba(255,255,255,0.03)]"
+                        >
+                          <td className="py-3 pr-4 font-medium text-ink">
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
+                              <span className="text-ink-soft">{quote.name}</span>
+                            </div>
+                          </td>
+                          <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
+                          <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
+                          <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayHigh !== null ? formatBRL(quote.dayHigh) : "—"}</td>
+                          <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayLow !== null ? formatBRL(quote.dayLow) : "—"}</td>
+                          <td className="tnum py-3 text-right text-ink-muted">{quote.volume !== null ? formatCompactNumber(quote.volume) : "—"}</td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                    <SkeletonRows count={carteiraQuotes.pending.length} columns={6} />
                   </tbody>
                 </table>
               </div>
@@ -308,9 +337,7 @@ export default function InvestimentosPage() {
 
         <GlassCard variant="liquid" className="col-span-12">
           <SectionHeader title="Radar de dividendos" subtitle="Ranking por yield aproximado (12 meses) — universo curado da B3" action={<Radar className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
-          {dividendWatchlist.loading ? (
-            <p className="mt-4 text-sm text-ink-muted">Carregando radar de dividendos...</p>
-          ) : dividendWatchlist.error ? (
+          {dividendWatchlist.error && dividendWatchlist.quotes.length === 0 && dividendWatchlist.pending.length === 0 ? (
             <p className="mt-4 text-sm text-ink-muted">{dividendWatchlist.error}</p>
           ) : (
             <div className="overflow-x-auto">
@@ -324,19 +351,28 @@ export default function InvestimentosPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {dividendWatchlist.quotes.map((quote) => (
-                    <tr key={quote.ticker} className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]">
-                      <td className="py-3 pr-4 font-medium text-ink">
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
-                          <span className="text-ink-soft">{quote.name}</span>
-                        </div>
-                      </td>
-                      <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
-                      <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
-                      <td className="tnum py-3 text-right font-semibold text-pos">{quote.dividendYieldApprox !== null ? formatPercent(quote.dividendYieldApprox) : "—"}</td>
-                    </tr>
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {dividendWatchlist.quotes.map((quote) => (
+                      <motion.tr
+                        key={quote.ticker}
+                        layout
+                        {...rowMotion}
+                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                        className="border-b border-[var(--color-line)] last:border-0 hover:bg-[rgba(255,255,255,0.03)]"
+                      >
+                        <td className="py-3 pr-4 font-medium text-ink">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
+                            <span className="text-ink-soft">{quote.name}</span>
+                          </div>
+                        </td>
+                        <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
+                        <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
+                        <td className="tnum py-3 text-right font-semibold text-pos">{quote.dividendYieldApprox !== null ? formatPercent(quote.dividendYieldApprox) : "—"}</td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                  <SkeletonRows count={dividendWatchlist.pending.length} columns={4} />
                 </tbody>
               </table>
             </div>
