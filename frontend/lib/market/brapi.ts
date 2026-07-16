@@ -4,6 +4,8 @@
  * Ver DEPLOYMENT.md para como configurar BRAPI_TOKEN.
  */
 
+import { readCachedQuotes, writeCachedQuote } from "./quoteCache";
+
 export interface MarketQuote {
   ticker: string;
   name: string;
@@ -78,41 +80,58 @@ function toQuote(result: BrapiQuoteResult): MarketQuote | null {
   };
 }
 
-async function fetchOneQuote(ticker: string, token: string, revalidateSeconds: number): Promise<{ quote: MarketQuote | null; error: string | null }> {
+async function fetchOneQuote(ticker: string, token: string, revalidateSeconds: number): Promise<{ ticker: string; quote: MarketQuote | null; error: string | null }> {
   const url = `https://brapi.dev/api/quote/${encodeURIComponent(ticker)}?dividends=true&token=${token}`;
   try {
     const response = await fetch(url, { next: { revalidate: revalidateSeconds } });
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      return { quote: null, error: `brapi.dev retornou status ${response.status} para ${ticker}.${body ? ` Detalhe: ${body.slice(0, 300)}` : ""}` };
+      return { ticker, quote: null, error: `brapi.dev retornou status ${response.status} para ${ticker}.${body ? ` Detalhe: ${body.slice(0, 300)}` : ""}` };
     }
     const data = (await response.json()) as BrapiResponse;
     const result = data.results?.[0];
-    return { quote: result ? toQuote(result) : null, error: null };
+    return { ticker, quote: result ? toQuote(result) : null, error: null };
   } catch (err) {
-    return { quote: null, error: err instanceof Error ? err.message : `Falha de rede ao consultar ${ticker} na brapi.dev.` };
+    return { ticker, quote: null, error: err instanceof Error ? err.message : `Falha de rede ao consultar ${ticker} na brapi.dev.` };
   }
 }
 
 /**
  * Busca cotações na brapi.dev — uma requisição por ativo (o plano gratuito só
- * permite 1 ativo por requisição), em paralelo. Lança erro descritivo (nunca
- * o token) apenas quando BRAPI_TOKEN não está configurado ou quando NENHUM
- * ativo retorna com sucesso; falhas isoladas de um ticker não derrubam os
- * demais.
+ * permite 1 ativo por requisição), em paralelo. Quando um ticker falha (limite
+ * de requisições do plano gratuito), cai para o último valor conhecido no
+ * cache compartilhado (market_quote_cache) em vez de simplesmente sumir da
+ * lista — com o uso normal do app, cada ticker acaba tendo sucesso em algum
+ * momento e passa a aparecer sempre (possivelmente com alguns minutos de
+ * atraso, já indicado na tela). Lança erro descritivo (nunca o token) apenas
+ * quando BRAPI_TOKEN não está configurado ou quando NENHUM ativo retorna
+ * sucesso nem tem valor em cache.
  */
 export async function fetchMarketQuotes(tickers: string[], revalidateSeconds: number): Promise<MarketQuote[]> {
   const token = process.env.BRAPI_TOKEN;
   if (!token) throw new Error("BRAPI_TOKEN não configurado.");
   if (tickers.length === 0) return [];
 
-  const settled = await Promise.all(tickers.map((ticker) => fetchOneQuote(ticker, token, revalidateSeconds)));
-  const quotes = settled.map((item) => item.quote).filter((quote): quote is MarketQuote => quote !== null);
+  const [settled, cached] = await Promise.all([
+    Promise.all(tickers.map((ticker) => fetchOneQuote(ticker, token, revalidateSeconds))),
+    readCachedQuotes(tickers),
+  ]);
 
-  if (quotes.length === 0) {
-    const firstError = settled.find((item) => item.error)?.error;
-    if (firstError) throw new Error(firstError);
+  const quotes: MarketQuote[] = [];
+  let firstError: string | null = null;
+
+  for (const item of settled) {
+    if (item.quote) {
+      quotes.push(item.quote);
+      void writeCachedQuote(item.quote);
+      continue;
+    }
+    if (!firstError) firstError = item.error;
+    const fallback = cached.get(item.ticker);
+    if (fallback) quotes.push(fallback);
   }
+
+  if (quotes.length === 0 && firstError) throw new Error(firstError);
 
   return quotes;
 }
