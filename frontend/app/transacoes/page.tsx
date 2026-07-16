@@ -515,9 +515,7 @@ function EditPanel({
             Valor
             <MoneyInput
               value={form.valor || ""}
-              onChange={(e) =>
-                setForm({ ...form, valor: Number(e.target.value) || 0 })
-              }
+              onValueChange={(valor) => setForm({ ...form, valor })}
               required
             />
           </label>

@@ -40,16 +40,21 @@ alter table public.financial_goals enable row level security;
 alter table public.goal_events enable row level security;
 
 create policy "financial_goals_owner" on public.financial_goals
-  for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create policy "goal_events_read_own" on public.goal_events
-  for select using (
-    user_id = auth.uid()
+  for select to authenticated using (
+    user_id = (select auth.uid())
     and exists (
       select 1 from public.financial_goals goal
-      where goal.id = goal_id and goal.user_id = auth.uid()
+      where goal.id = goal_id and goal.user_id = (select auth.uid())
     )
   );
+
+grant select, insert, update, delete on public.financial_goals to authenticated;
+grant select on public.goal_events to authenticated;
 
 -- Records a contribution/withdrawal and updates progress in one transaction.
 create or replace function public.record_goal_event(

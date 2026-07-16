@@ -42,6 +42,10 @@ Substitua `[senha]` pela senha que criou. Esse é o `DATABASE_URL` do backend (t
    3. `supabase/migrations/202607130001_lgpd_consent_log.sql`
    4. `supabase/migrations/202607150001_security_hardening.sql`
    5. `supabase/migrations/202607160001_goals_and_events.sql`
+   6. `supabase/migrations/202607170001_benefit_cards.sql`
+   7. `supabase/migrations/202607170002_goal_rpc_security.sql`
+
+A migration 6 separa cartões de crédito e alimentação, cria saldos VR/VA ou flexível e registra compras com débito atômico. Aplique-a antes de publicar este frontend; sem ela, cadastro e compra em cartão alimentação serão recusados com mensagem orientativa.
 3. Não cole apenas o caminho do arquivo: o SQL Editor precisa receber o conteúdo SQL.
 4. Verifique em **Table Editor** que as tabelas foram criadas (`profiles`, `transactions`, `credit_cards`, `vehicles`, `uber_daily_entries`, `categories`, `recurrence_rules`, `investments`, `financial_goals`, `goal_events`, etc.).
 5. Em **Database > Security Advisor**, confirme que não existem alertas `Security Definer View` para as views `vw_*`.

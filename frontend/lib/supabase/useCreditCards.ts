@@ -14,6 +14,12 @@ export interface CreditCardRecord {
   color: string | null;
   active: boolean;
   current_bill: number;
+  card_type: "credit" | "benefit";
+  benefit_mode: "separate" | "flex" | null;
+  vr_balance: number;
+  va_balance: number;
+  flex_balance: number;
+  benefit_balance: number;
 }
 
 export function useCreditCards() {
@@ -36,7 +42,7 @@ export function useCreditCards() {
     const [cardsResult, billsResult] = await Promise.all([
       supabase
         .from("credit_cards")
-        .select("id,nickname,brand,bank,total_limit,closing_day,due_day,color,active")
+        .select("id,nickname,brand,bank,total_limit,closing_day,due_day,color,active,card_type,benefit_mode,vr_balance,va_balance,flex_balance")
         .eq("active", true)
         .order("nickname"),
       supabase
@@ -60,6 +66,10 @@ export function useCreditCards() {
           total_limit: Number(card.total_limit),
           closing_day: Number(card.closing_day),
           due_day: Number(card.due_day),
+          vr_balance: Number(card.vr_balance),
+          va_balance: Number(card.va_balance),
+          flex_balance: Number(card.flex_balance),
+          benefit_balance: Number(card.vr_balance) + Number(card.va_balance) + Number(card.flex_balance),
           current_bill: billByCard.get(card.id) ?? 0,
         })),
       );
