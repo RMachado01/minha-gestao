@@ -132,7 +132,7 @@ export default function GoalsPage() {
         const loadedGoals = ((goalsResult.data ?? []) as RawGoal[]).map(normalizeGoal);
         setGoals(loadedGoals);
         setSelectedId((current) => current || loadedGoals[0]?.id || "");
-        if (loadedGoals[0]?.custom_annual_rate !== null) setCustomRate(loadedGoals[0].custom_annual_rate);
+        if (loadedGoals[0] && loadedGoals[0].custom_annual_rate !== null) setCustomRate(loadedGoals[0].custom_annual_rate);
       }
 
       if (!eventsResult.error) {
