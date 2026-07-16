@@ -8,7 +8,7 @@ import { TopBar } from "./TopBar";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { FinancialAdvisorWidget } from "@/components/advisor/FinancialAdvisorWidget";
 
-const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade", "/redefinir-senha"]);
+const PUBLIC_ROUTES = new Set(["/login", "/cadastro", "/termos", "/privacidade", "/redefinir-senha", "/manutencao"]);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
