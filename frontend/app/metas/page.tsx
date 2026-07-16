@@ -14,6 +14,7 @@ import {
   MessageCircleQuestion,
   Plus,
   Send,
+  Settings2,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { BentoGrid } from "@/components/ui/BentoGrid";
 import { MoneyInput } from "@/components/forms/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { formatBRL } from "@/lib/format";
+import { GoalManageDialog } from "@/components/goals/GoalManageDialog";
 import {
   answerFinancialQuestion,
   averageIncome,
@@ -92,6 +94,7 @@ export default function GoalsPage() {
   const [saving, setSaving] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
   const [error, setError] = useState("");
+  const [managedGoal, setManagedGoal] = useState<FinancialGoal | null>(null);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<string[]>([
     "Olá! Eu uso somente os dados da sua conta para ajudar com saldo, gastos, aportes e prazos das metas. O que você quer analisar?",
@@ -118,7 +121,7 @@ export default function GoalsPage() {
       }
 
       const [goalsResult, eventsResult, transactionsResult, investmentsResult] = await Promise.all([
-        supabase.from("financial_goals").select("*").order("created_at", { ascending: false }),
+        supabase.from("financial_goals").select("*").neq("status", "cancelled").order("created_at", { ascending: false }),
         supabase.from("goal_events").select("*").order("occurred_on", { ascending: false }).limit(150),
         supabase.from("transactions").select("type,amount,occurred_on,category").order("occurred_on", { ascending: false }).limit(1000),
         supabase.from("investments").select("invested_amount"),
@@ -319,12 +322,34 @@ export default function GoalsPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{goals.map((goal) => {
             const progress = Math.min(100, (goal.current_amount / goal.target_amount) * 100);
-            return <button key={goal.id} type="button" onClick={() => { setSelectedId(goal.id); if (goal.custom_annual_rate !== null) setCustomRate(goal.custom_annual_rate); }} className={`surface-card rounded-[var(--radius-card)] p-5 text-left transition ${selectedGoal?.id === goal.id ? "border-accent shadow-[0_0_0_2px_color-mix(in_oklab,var(--color-accent)_24%,transparent)]" : "hover:-translate-y-0.5"}`}>
-              <div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-accent/10 text-accent"><Target className="size-5" /></span><span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-ink-muted">{GOAL_TYPES.find((item) => item.value === goal.goal_type)?.label}</span></div>
-              <h3 className="mt-4 font-semibold text-ink">{goal.name}</h3><p className="mt-1 line-clamp-2 min-h-10 text-sm text-ink-muted">{goal.description || "Sem descrição"}</p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-gradient-to-r from-accent to-pos" style={{ width: `${progress}%` }} /></div>
-              <div className="mt-2 flex justify-between text-xs"><span className="tnum font-semibold text-ink">{formatBRL(goal.current_amount)}</span><span className="tnum text-ink-muted">{progress.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% de {formatBRL(goal.target_amount)}</span></div>
-            </button>;
+            return (
+              <div
+                key={goal.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => { setSelectedId(goal.id); if (goal.custom_annual_rate !== null) setCustomRate(goal.custom_annual_rate); }}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(goal.id); if (goal.custom_annual_rate !== null) setCustomRate(goal.custom_annual_rate); } }}
+                className={`surface-card rounded-[var(--radius-card)] p-5 text-left transition ${selectedGoal?.id === goal.id ? "border-accent shadow-[0_0_0_2px_color-mix(in_oklab,var(--color-accent)_24%,transparent)]" : "hover:-translate-y-0.5"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="grid size-10 place-items-center rounded-2xl bg-accent/10 text-accent"><Target className="size-5" /></span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-ink-muted">{GOAL_TYPES.find((item) => item.value === goal.goal_type)?.label}</span>
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); setManagedGoal(goal); }}
+                      className="grid size-8 shrink-0 place-items-center rounded-xl border border-[var(--color-line)] text-ink-soft hover:text-ink"
+                      aria-label={`Gerenciar meta ${goal.name}`}
+                    >
+                      <Settings2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <h3 className="mt-4 font-semibold text-ink">{goal.name}</h3><p className="mt-1 line-clamp-2 min-h-10 text-sm text-ink-muted">{goal.description || "Sem descrição"}</p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-gradient-to-r from-accent to-pos" style={{ width: `${progress}%` }} /></div>
+                <div className="mt-2 flex justify-between text-xs"><span className="tnum font-semibold text-ink">{formatBRL(goal.current_amount)}</span><span className="tnum text-ink-muted">{progress.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% de {formatBRL(goal.target_amount)}</span></div>
+              </div>
+            );
           })}</div>
         )}
       </section>
@@ -353,6 +378,8 @@ export default function GoalsPage() {
           {selectedEvents.length === 0 ? <p className="mt-4 text-sm text-ink-muted">Nenhum evento registrado. Adicione o primeiro aporte ou uma nota importante.</p> : <ol className="mt-5 grid gap-3 md:grid-cols-2">{selectedEvents.map((item) => <li key={item.id} className="surface-card flex gap-3 rounded-2xl p-4"><span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl ${item.event_type === "withdrawal" ? "bg-rose-400/10 text-neg" : item.event_type === "contribution" ? "bg-emerald-400/10 text-pos" : "bg-accent/10 text-accent"}`}>{item.event_type === "withdrawal" ? <ArrowDown className="size-4" /> : item.event_type === "contribution" ? <ArrowUp className="size-4" /> : <Check className="size-4" />}</span><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-ink">{item.event_type === "contribution" ? "Aporte" : item.event_type === "withdrawal" ? "Retirada" : "Nota"}</p>{item.amount !== null && <span className="tnum text-sm font-semibold text-accent">{formatBRL(item.amount)}</span>}</div><p className="mt-0.5 text-xs text-ink-muted">{new Date(`${item.occurred_on}T12:00:00`).toLocaleDateString("pt-BR")}</p>{item.description && <p className="mt-2 text-sm text-ink-soft">{item.description}</p>}</div></li>)}</ol>}
         </GlassCard>
       </BentoGrid>}
+
+      <GoalManageDialog goal={managedGoal} onClose={() => setManagedGoal(null)} onChanged={loadData} />
     </section>
   );
 }

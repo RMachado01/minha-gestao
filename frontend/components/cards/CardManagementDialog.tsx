@@ -17,11 +17,13 @@ export function CardManagementDialog({
   mode,
   onClose,
   onChanged,
+  onRaise,
 }: {
   card: CreditCardRecord | null;
   mode: DialogMode;
   onClose: () => void;
   onChanged: () => void | Promise<void>;
+  onRaise?: (message: string) => void;
 }) {
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
@@ -43,6 +45,8 @@ export function CardManagementDialog({
       return;
     }
     const isBenefit = card.card_type === "benefit";
+    const benefitCreditAmount = isBenefit ? parseBRL(data.get("benefit_credit_amount")) : NaN;
+    const hasBenefitCredit = isBenefit && Number.isFinite(benefitCreditAmount) && benefitCreditAmount > 0;
     const { error: updateError } = await supabase.from("credit_cards").update({
       nickname: String(data.get("nickname")).trim(),
       brand: String(data.get("brand")),
@@ -55,6 +59,8 @@ export function CardManagementDialog({
       vr_balance: isBenefit && benefitMode === "separate" ? parseBRL(data.get("vr_balance")) || 0 : 0,
       va_balance: isBenefit && benefitMode === "separate" ? parseBRL(data.get("va_balance")) || 0 : 0,
       flex_balance: isBenefit && benefitMode === "flex" ? parseBRL(data.get("flex_balance")) || 0 : 0,
+      benefit_credit_amount: hasBenefitCredit ? benefitCreditAmount : null,
+      benefit_credit_day: hasBenefitCredit ? Number(data.get("benefit_credit_day")) || null : null,
     }).eq("id", card.id);
     if (updateError) {
       setError("Não foi possível atualizar o cartão.");
@@ -63,8 +69,12 @@ export function CardManagementDialog({
     }
     await onChanged();
     toast("Cartão atualizado com sucesso.", "success");
+    const isRaise = hasBenefitCredit && card.benefit_credit_amount !== null && benefitCreditAmount > card.benefit_credit_amount;
     setSaving(false);
     onClose();
+    if (isRaise) {
+      onRaise?.("Parabéns pelo aumento! Um passo mais próximo da sua independência.");
+    }
   }
 
   async function archiveCard() {
@@ -151,6 +161,8 @@ export function CardManagementDialog({
                 </> : <>
                   <label className="field-label">Organização do saldo<SelectField value={benefitMode} onChange={(event) => setBenefitMode(event.target.value as "separate" | "flex")}><option value="separate">VR e VA separados</option><option value="flex">Saldo flexível</option></SelectField></label>
                   {benefitMode === "separate" ? <><label className="field-label">Saldo VR<MoneyInput name="vr_balance" defaultValue={card.vr_balance} /></label><label className="field-label">Saldo VA<MoneyInput name="va_balance" defaultValue={card.va_balance} /></label></> : <label className="field-label">Saldo flexível<MoneyInput name="flex_balance" defaultValue={card.flex_balance} /></label>}
+                  <label className="field-label">Crédito mensal recorrente<MoneyInput name="benefit_credit_amount" defaultValue={card.benefit_credit_amount ?? undefined} placeholder="0,00" /><span className="field-help">Opcional — valor que costuma cair todo mês nesse cartão.</span></label>
+                  <label className="field-label">Dia do crédito<input className="field tnum" type="number" min="1" max="31" name="benefit_credit_day" defaultValue={card.benefit_credit_day ?? undefined} /></label>
                 </>}
                 {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2">{error}</p>}
                 <div className="flex flex-wrap justify-end gap-3 sm:col-span-2">

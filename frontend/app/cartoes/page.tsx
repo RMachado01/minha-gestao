@@ -22,6 +22,7 @@ import { BillCalendar } from "@/components/cards/BillCalendar";
 import { CardRegistration } from "@/components/cards/CardRegistration";
 import { CardManagementDialog } from "@/components/cards/CardManagementDialog";
 import { CardBrandMark } from "@/components/cards/CardBrandMark";
+import { RaiseCelebration } from "@/components/ui/RaiseCelebration";
 import { BANKS, getBrand } from "@/lib/brands";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 import {
@@ -232,6 +233,7 @@ export default function CartoesPage() {
   const { cards: storedCards, loading, refresh } = useCreditCards();
   const [managedCard, setManagedCard] = useState<CreditCardRecord | null>(null);
   const [dialogMode, setDialogMode] = useState<"edit" | "delete">("edit");
+  const [celebration, setCelebration] = useState("");
   const creditRecords = storedCards.filter((card) => card.card_type === "credit");
   const benefitRecords = storedCards.filter((card) => card.card_type === "benefit");
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -414,7 +416,8 @@ export default function CartoesPage() {
           height={280}
         />
       </GlassCard>
-      <CardManagementDialog key={`${managedCard?.id ?? "none"}-${dialogMode}`} card={managedCard} mode={dialogMode} onClose={() => setManagedCard(null)} onChanged={refresh} />
+      <CardManagementDialog key={`${managedCard?.id ?? "none"}-${dialogMode}`} card={managedCard} mode={dialogMode} onClose={() => setManagedCard(null)} onChanged={refresh} onRaise={setCelebration} />
+      <RaiseCelebration visible={celebration !== ""} message={celebration} onClose={() => setCelebration("")} />
     </section>
   );
 }

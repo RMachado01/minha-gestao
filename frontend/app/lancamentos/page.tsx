@@ -42,7 +42,7 @@ export default function LancamentosPage() {
   const [selectedCardId, setSelectedCardId] = useState("");
   const [benefitKind, setBenefitKind] = useState<"vr" | "va">("vr");
   const [recurring, setRecurring] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment">("subscription");
+  const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment" | "income">("subscription");
   const [dueDay, setDueDay] = useState(Number(today.slice(8, 10)));
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Alimentação");
@@ -81,6 +81,7 @@ export default function LancamentosPage() {
     setCategoryError("");
     setSelectedCategoryId(null);
     setSelectedCategory(nextType === "income" ? "Salário" : "Alimentação");
+    setRecurrenceType(nextType === "income" ? "income" : "subscription");
   }
 
   function chooseCategory(name: string) {
@@ -219,7 +220,7 @@ export default function LancamentosPage() {
       recurring,
       recurrence_id: recurrenceId,
       credit_card_id: tipo === "expense" && payment === "credit" ? selectedCardId : null,
-      origin: tipo === "expense" ? (recurring ? "recurring_expense" : "expense") : null,
+      origin: tipo === "expense" ? (recurring ? "recurring_expense" : "expense") : (recurring ? "fixed_income" : "variable_income"),
       status: tipo === "expense" ? "pending" : "received",
       idempotency_key: crypto.randomUUID(),
     }).select("id").single();
@@ -294,7 +295,7 @@ export default function LancamentosPage() {
                 {selectedCard && <div className="surface-card mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"><div><p className="text-sm font-semibold text-ink">{selectedCard.nickname} vinculado</p><p className="text-xs text-ink-muted">{selectedCard.card_type === "benefit" ? "Débito automático após salvar." : "A compra entrará na fatura deste cartão."}</p></div><div className="text-right"><p className="text-xs text-ink-muted">{selectedCard.card_type === "benefit" ? "Saldo disponível" : "Fatura atual"}</p><p className="tnum text-sm font-semibold text-ink">{(selectedCard.card_type === "benefit" ? selectedCard.benefit_balance : selectedCard.current_bill).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div></div>}
               </fieldset>
             )}
-            {payment !== "benefit" && (
+            {payment !== "benefit" && tipo === "expense" && (
               <div className="sm:col-span-2">
                 <label className="ios-glass flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm text-ink-soft"><input type="checkbox" name="recurring" className="size-4" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><strong className="block font-semibold text-ink">Repetir mensalmente</strong><span className="text-xs text-ink-muted">Cria uma recorrência que pode ser pausada depois.</span></span></label>
                 {recurring && (
@@ -302,6 +303,14 @@ export default function LancamentosPage() {
                     <label className="field-label">Tipo de recorrência<SelectField value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as typeof recurrenceType)}><option value="subscription">Assinatura</option><option value="fixed_bill">Conta fixa</option><option value="installment">Parcelamento</option></SelectField></label>
                     <label className="field-label">Dia de vencimento<input className="field tnum" type="number" min={1} max={31} value={dueDay} onChange={(event) => setDueDay(Number(event.target.value))} required /><span className="field-help">Dia do mês em que a assinatura/conta vence.</span></label>
                   </div>
+                )}
+              </div>
+            )}
+            {tipo === "income" && (
+              <div className="sm:col-span-2">
+                <label className="ios-glass flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm text-ink-soft"><input type="checkbox" name="recurring" className="size-4" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><strong className="block font-semibold text-ink">É uma renda recorrente (ex.: salário)?</strong><span className="text-xs text-ink-muted">Cria uma recorrência mensal — depois é possível ajustar o valor em Recorrentes.</span></span></label>
+                {recurring && (
+                  <label className="field-label mt-3">Dia do pagamento<input className="field tnum" type="number" min={1} max={31} value={dueDay} onChange={(event) => setDueDay(Number(event.target.value))} required /><span className="field-help">Dia do mês em que essa renda costuma cair.</span></label>
                 )}
               </div>
             )}
