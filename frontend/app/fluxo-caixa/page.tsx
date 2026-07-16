@@ -3,6 +3,7 @@
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  LoaderCircle,
   Scale,
   PiggyBank,
 } from "lucide-react";
@@ -19,7 +20,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import { usePeriodo } from "@/lib/usePeriodo";
-import { getFluxo, fluxoKpis } from "@/lib/data/empty";
+import { useFinanceSummary } from "@/lib/supabase/useFinanceSummary";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 
 /** Rótulos contextuais conforme o filtro de período global. */
@@ -31,17 +32,29 @@ function periodoLabel(modo: "mensal" | "anual") {
 
 export default function FluxoCaixaPage() {
   const { modo } = usePeriodo();
-  const data = getFluxo(modo);
+  const { loading, error, fluxoMensal, fluxoAnual, fluxoKpis } = useFinanceSummary();
+  const data = modo === "anual" ? fluxoAnual : fluxoMensal;
   const rotulo = periodoLabel(modo);
 
-  if (data.length === 0) {
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 py-2">
+        <PageHeader eyebrow="Finanças" title="Fluxo de caixa" description="Compare entradas, saídas e saldo acumulado no período selecionado." />
+        <p className="flex items-center gap-2 text-sm text-ink-muted"><LoaderCircle className="size-4 animate-spin" />Carregando seu fluxo de caixa...</p>
+      </div>
+    );
+  }
+
+  const semMovimentacao = data.every((p) => Number(p.entradas) === 0 && Number(p.saidas) === 0);
+
+  if (error || semMovimentacao) {
     return (
       <div className="flex flex-col gap-6 py-2">
         <PageHeader eyebrow="Finanças" title="Fluxo de caixa" description="Compare entradas, saídas e saldo acumulado no período selecionado." />
         <EmptyState
           icon={Scale}
-          title="Fluxo de caixa ainda vazio"
-          description="Entradas e saídas aparecerão aqui depois que você registrar suas movimentações."
+          title={error || "Fluxo de caixa ainda vazio"}
+          description={error ? "Recarregue a página para tentar novamente." : "Entradas e saídas aparecerão aqui depois que você registrar suas movimentações."}
           actionLabel="Adicionar movimentação"
           actionHref="/lancamentos"
         />

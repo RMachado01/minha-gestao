@@ -42,6 +42,9 @@ export default function LancamentosPage() {
   const [payment, setPayment] = useState("pix");
   const [selectedCardId, setSelectedCardId] = useState("");
   const [benefitOperator, setBenefitOperator] = useState("Alelo");
+  const [recurring, setRecurring] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment">("subscription");
+  const [dueDay, setDueDay] = useState(Number(today.slice(8, 10)));
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Alimentação");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -163,6 +166,26 @@ export default function LancamentosPage() {
       return;
     }
 
+    let recurrenceId: string | null = null;
+    if (recurring) {
+      const { data: rule, error: ruleError } = await supabase.from("recurrence_rules").insert({
+        user_id: authData.user.id,
+        description: String(data.get("description")).trim(),
+        type: recurrenceType,
+        amount,
+        day_of_month: dueDay,
+        start_date: String(data.get("date")),
+        category_id: tipo === "benefit" ? null : selectedCategoryId,
+        active: true,
+      }).select("id").single();
+      if (ruleError || !rule) {
+        setError("Não foi possível criar a recorrência. Tente novamente.");
+        setSaving(false);
+        return;
+      }
+      recurrenceId = rule.id;
+    }
+
     const description = String(data.get("description")).trim();
     const { data: inserted, error: insertError } = await supabase.from("transactions").insert({
       user_id: authData.user.id,
@@ -175,9 +198,10 @@ export default function LancamentosPage() {
       payment_method: tipo === "benefit" ? "benefit" : tipo === "expense" ? payment : "pix",
       benefit_kind: tipo === "benefit" ? String(data.get("benefit")) : null,
       benefit_operator: tipo === "benefit" ? String(data.get("benefit_operator")) : null,
-      recurring: data.get("recurring") === "on",
+      recurring,
+      recurrence_id: recurrenceId,
       credit_card_id: tipo === "expense" && payment === "credit" ? selectedCardId : null,
-      origin: tipo === "expense" ? "expense" : null,
+      origin: tipo === "expense" ? (recurring ? "recurring_expense" : "expense") : null,
       status: tipo === "expense" ? "pending" : "received",
       idempotency_key: crypto.randomUUID(),
     }).select("id").single();
@@ -191,17 +215,20 @@ export default function LancamentosPage() {
     form.reset();
     setPayment("pix");
     setSelectedCardId("");
+    setRecurring(false);
+    setRecurrenceType("subscription");
+    setDueDay(Number(today.slice(8, 10)));
     setSaved(true);
     setSaving(false);
     setLastTransaction({ id: inserted.id, description, amount });
-    toast("Lançamento salvo com sucesso!", "success");
+    toast(recurring ? "Lançamento e recorrência salvos com sucesso!" : "Lançamento salvo com sucesso!", "success");
     setTimeout(() => setSaved(false), 2500);
   }
   return (
     <section className="flex flex-col gap-6">
       <header><h2 className="text-2xl font-semibold text-ink">Novo lançamento</h2><p className="mt-1 text-sm text-ink-muted">Cadastre gastos, receitas e benefícios de alimentação.</p></header>
       <BentoGrid>
-        <GlassCard variant="hero" className="col-span-12 p-6 lg:col-span-8 lg:p-7">
+        <GlassCard variant="hero" className="col-span-12 p-6 lg:p-7">
           <div className="mb-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">Etapa 1</p><h3 className="mt-1 text-lg font-semibold text-ink">O que você deseja registrar?</h3></div>
           <div className="grid grid-cols-3 gap-2" role="group" aria-label="Tipo do lançamento">
             {tipos.map(({ id, label, icon: Icon, tone }) => <button key={id} type="button" aria-pressed={tipo === id} onClick={() => chooseType(id)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${tipo === id ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:bg-white/5"}`}><Icon className={`mx-auto mb-1 size-5 ${tone}`} />{label}</button>)}
@@ -216,14 +243,18 @@ export default function LancamentosPage() {
             {tipo === "benefit" && <div className="sm:col-span-2"><BrandBadge identity={getBrand(BENEFIT_OPERATORS, benefitOperator)} /></div>}
             {tipo === "expense" && <label className="field-label sm:col-span-2">Forma de pagamento<SelectField name="payment" value={payment} onChange={(event) => { setPayment(event.target.value); if (event.target.value !== "credit") setSelectedCardId(""); }}><option value="pix">Débito / Pix</option><option value="credit">Cartão de crédito — escolher cartão</option><option value="cash">Dinheiro</option><option value="benefit">VR / VA</option></SelectField></label>}
             {tipo === "expense" && payment === "credit" && <fieldset className="sm:col-span-2"><legend className="field-label">Qual cartão foi usado?</legend><p className="mt-1 text-xs text-ink-muted">Escolha um cartão cadastrado para vincular a compra à fatura.</p>{loadingCards ? <p className="mt-3 flex items-center gap-2 text-sm text-ink-muted"><LoaderCircle className="size-4 animate-spin" />Carregando cartões...</p> : cards.length > 0 ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{cards.map((card) => <button key={card.id} type="button" aria-pressed={selectedCardId === card.id} onClick={() => setSelectedCardId(card.id)} className={`rounded-2xl border p-4 text-left transition ${selectedCardId === card.id ? "border-accent bg-accent/10 shadow-[0_0_0_2px_color-mix(in_oklab,var(--color-accent)_16%,transparent)]" : "border-[var(--color-line)] surface-card hover:border-[var(--color-line-strong)]"}`}><span className="flex items-center gap-2"><span className="size-3 rounded-full" style={{ background: card.color ?? "var(--color-accent)" }} /><strong className="text-sm text-ink">{card.nickname}</strong><BrandBadge identity={getBrand(CARD_BRANDS, card.brand)} className="ml-auto" /></span><span className="mt-2 block text-xs text-ink-muted">Fecha dia {card.closing_day} · vence dia {card.due_day}</span></button>)}</div> : <Link href="/cartoes" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-accent hover:underline"><CreditCard className="size-4" />Cadastrar um cartão primeiro</Link>}{cardsError && <p className="mt-2 text-sm text-neg">{cardsError}</p>}{selectedCard && <div className="surface-card mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"><div><p className="text-sm font-semibold text-ink">{selectedCard.nickname} vinculado</p><p className="text-xs text-ink-muted">A compra entrará na fatura deste cartão.</p></div><div className="text-right"><p className="text-xs text-ink-muted">Fatura atual</p><p className="tnum text-sm font-semibold text-ink">{selectedCard.current_bill.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div></div>}</fieldset>}
-            <label className="ios-glass flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm text-ink-soft sm:col-span-2"><input type="checkbox" name="recurring" className="size-4" /><span><strong className="block font-semibold text-ink">Repetir mensalmente</strong><span className="text-xs text-ink-muted">Cria uma recorrência que pode ser pausada depois.</span></span></label>
+            <div className="sm:col-span-2">
+              <label className="ios-glass flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm text-ink-soft"><input type="checkbox" name="recurring" className="size-4" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><strong className="block font-semibold text-ink">Repetir mensalmente</strong><span className="text-xs text-ink-muted">Cria uma recorrência que pode ser pausada depois.</span></span></label>
+              {recurring && (
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <label className="field-label">Tipo de recorrência<SelectField value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as typeof recurrenceType)}><option value="subscription">Assinatura</option><option value="fixed_bill">Conta fixa</option><option value="installment">Parcelamento</option></SelectField></label>
+                  <label className="field-label">Dia de vencimento<input className="field tnum" type="number" min={1} max={31} value={dueDay} onChange={(event) => setDueDay(Number(event.target.value))} required /><span className="field-help">Dia do mês em que a assinatura/conta vence.</span></label>
+                </div>
+              )}
+            </div>
             {error && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2">{error}</p>}
             <button className="btn-primary sm:col-span-2" type="submit" disabled={saving}>{saving ? <><LoaderCircle className="size-4 animate-spin" />Salvando...</> : saved ? <><Check className="size-4" />Lançamento salvo</> : <><CreditCard className="size-4" />Salvar lançamento</>}</button>
           </form>
-        </GlassCard>
-        <GlassCard variant="liquid" className="col-span-12 lg:col-span-4">
-          <h3 className="font-semibold text-ink">Como será registrado</h3>
-          <div className="mt-5 space-y-4 text-sm"><div className="flex justify-between border-b border-[var(--color-line)] pb-3"><span className="text-ink-muted">Tipo</span><span className="font-medium text-ink">{tipos.find((item) => item.id === tipo)?.label}</span></div><div className="flex justify-between border-b border-[var(--color-line)] pb-3"><span className="text-ink-muted">Status inicial</span><span className="font-medium text-warn">Pendente</span></div><p className="rounded-2xl bg-accent/10 p-4 text-ink-soft">A API usará uma chave de idempotência para impedir lançamentos duplicados em caso de clique duplo ou reconexão.</p></div>
         </GlassCard>
       </BentoGrid>
       <AnimatePresence>
