@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { Check, CreditCard, LoaderCircle, Plus, Utensils, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { CardBrandMark } from "@/components/cards/CardBrandMark";
 import { MoneyInput, parseBRL } from "@/components/forms/MoneyInput";
 import { SelectField } from "@/components/forms/SelectField";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { BANKS, BENEFIT_OPERATORS, CARD_BRANDS, getBrand } from "@/lib/brands";
 
 type CardType = "credit" | "benefit";
 type BenefitMode = "separate" | "flex";
@@ -19,6 +21,21 @@ export function CardRegistration({ onSaved }: { onSaved?: () => void | Promise<v
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [brand, setBrand] = useState("Mastercard");
+  const [bank, setBank] = useState("Nubank");
+  const [benefitOperator, setBenefitOperator] = useState("Alelo");
+  const [nickname, setNickname] = useState("");
+  const bankIdentity = getBrand(BANKS, bank);
+  const benefitIdentity = getBrand(BENEFIT_OPERATORS, benefitOperator);
+  const isBenefit = cardType === "benefit";
+  const previewColor = isBenefit ? benefitIdentity.color : bankIdentity.color;
+
+  function resetForm() {
+    setBrand("Mastercard");
+    setBank("Nubank");
+    setBenefitOperator("Alelo");
+    setNickname("");
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,13 +57,13 @@ export function CardRegistration({ onSaved }: { onSaved?: () => void | Promise<v
       return;
     }
 
-    const isBenefit = cardType === "benefit";
     const payload = {
       user_id: authData.user.id,
       nickname: String(data.get("nickname")).trim(),
-      brand: String(data.get("brand")),
+      brand: isBenefit ? benefitOperator : String(data.get("brand")),
+      bank: isBenefit ? null : String(data.get("bank")),
       total_limit: isBenefit ? 0 : parseBRL(data.get("limit")),
-      color: String(data.get("color")),
+      color: isBenefit ? benefitIdentity.color : String(data.get("color")),
       closing_day: isBenefit ? 1 : Number(data.get("closing_day")),
       due_day: isBenefit ? 1 : Number(data.get("due_day")),
       active: true,
@@ -73,6 +90,7 @@ export function CardRegistration({ onSaved }: { onSaved?: () => void | Promise<v
     setSaved(true);
     toast(isBenefit ? "Cartão alimentação cadastrado." : "Cartão de crédito cadastrado.", "success");
     form.reset();
+    resetForm();
     await onSaved?.();
     setTimeout(() => {
       setSaved(false);
@@ -97,16 +115,43 @@ export function CardRegistration({ onSaved }: { onSaved?: () => void | Promise<v
 
           <div className="mb-5 grid grid-cols-2 gap-2" role="group" aria-label="Tipo de cartão">
             <button type="button" aria-pressed={cardType === "credit"} onClick={() => setCardType("credit")} className={`rounded-2xl border p-3 text-sm font-semibold transition ${cardType === "credit" ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft"}`}><CreditCard className="mx-auto mb-1 size-5" />Crédito</button>
-            <button type="button" aria-pressed={cardType === "benefit"} onClick={() => setCardType("benefit")} className={`rounded-2xl border p-3 text-sm font-semibold transition ${cardType === "benefit" ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft"}`}><Utensils className="mx-auto mb-1 size-5" />VR / VA</button>
+            <button type="button" aria-pressed={isBenefit} onClick={() => setCardType("benefit")} className={`rounded-2xl border p-3 text-sm font-semibold transition ${isBenefit ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft"}`}><Utensils className="mx-auto mb-1 size-5" />VR / VA</button>
+          </div>
+
+          {/* Preview ao vivo — reflete bandeira/operadora e banco escolhidos */}
+          <div
+            className="relative mb-5 flex h-24 items-center justify-between overflow-hidden rounded-2xl p-4"
+            style={{
+              background: `linear-gradient(135deg, color-mix(in oklab, ${previewColor} 60%, #080c16), color-mix(in oklab, ${previewColor} 20%, #080c16))`,
+              border: `1px solid color-mix(in oklab, ${previewColor} 45%, transparent)`,
+            }}
+          >
+            <div>
+              <p className="text-sm font-semibold text-white">{nickname || "Apelido do cartão"}</p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/70">{isBenefit ? "VR / VA" : bankIdentity.label}</p>
+            </div>
+            {isBenefit ? (
+              <span className="text-sm font-bold tracking-tight text-white/95">{benefitIdentity.label}</span>
+            ) : (
+              <CardBrandMark brand={brand} />
+            )}
           </div>
 
           <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={submit}>
-            <label className="field-label">Apelido<input className="field" name="nickname" placeholder={cardType === "benefit" ? "Ex.: Vale alimentação" : "Ex.: Cartão principal"} required /></label>
-            <label className="field-label">{cardType === "benefit" ? "Operadora" : "Bandeira"}<SelectField name="brand">{cardType === "benefit" ? <><option>Alelo</option><option>Pluxee</option><option>Ticket</option><option>VR Benefícios</option><option>Flash</option><option>Caju</option><option>Swile</option><option>Outra</option></> : <><option>Mastercard</option><option>Visa</option><option>Elo</option><option>American Express</option></>}</SelectField></label>
-            <label className="field-label">Cor<SelectField name="color"><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#a78bfa">Violeta</option></SelectField></label>
+            <label className="field-label">Apelido<input className="field" name="nickname" placeholder={isBenefit ? "Ex.: Vale alimentação" : "Ex.: Cartão principal"} value={nickname} onChange={(event) => setNickname(event.target.value)} required /></label>
+
+            {isBenefit ? (
+              <label className="field-label">Operadora<SelectField name="brand" value={benefitOperator} onChange={(event) => setBenefitOperator(event.target.value)}>{Object.keys(BENEFIT_OPERATORS).map((key) => <option key={key} value={key}>{BENEFIT_OPERATORS[key].label}</option>)}</SelectField></label>
+            ) : (
+              <>
+                <label className="field-label">Bandeira<select className="field" name="brand" value={brand} onChange={(event) => setBrand(event.target.value)}>{Object.keys(CARD_BRANDS).map((key) => <option key={key} value={key}>{key}</option>)}</select></label>
+                <label className="field-label">Banco<select className="field" name="bank" value={bank} onChange={(event) => setBank(event.target.value)}>{Object.keys(BANKS).map((key) => <option key={key} value={key}>{BANKS[key].label}</option>)}</select></label>
+              </>
+            )}
 
             {cardType === "credit" ? <>
               <label className="field-label">Limite total<MoneyInput name="limit" required /></label>
+              <label className="field-label">Cor alternativa<select className="field" name="color"><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option></select><span className="field-help">Usada só se o banco escolhido não tiver identidade cadastrada.</span></label>
               <label className="field-label">Dia de fechamento<input className="field" type="number" min="1" max="31" name="closing_day" required /></label>
               <label className="field-label">Dia de vencimento<input className="field" type="number" min="1" max="31" name="due_day" required /></label>
             </> : <>

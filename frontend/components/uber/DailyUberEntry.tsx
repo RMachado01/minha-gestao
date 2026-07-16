@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Calculator, Check, Gauge, Plus, TrendingUp } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { formatBRL } from "@/lib/format";
+import { calcEnergyConsumed, calcEnergyCost } from "@/lib/uberCalc";
 
 type Entry = { date: string; km: number; revenue: number; costs: number; profit: number };
 
@@ -22,8 +23,8 @@ export function DailyUberEntry() {
   const [saved, setSaved] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const distanceKm = distanceMode === "distance" ? km : Math.max(odometerEnd - odometerStart, 0);
-  const energyConsumed = powertrain === "electric" ? (distanceKm * efficiency) / 100 : efficiency > 0 ? distanceKm / efficiency : 0;
-  const energy = energyConsumed * unitPrice;
+  const energyConsumed = calcEnergyConsumed(distanceKm, efficiency, powertrain);
+  const energy = calcEnergyCost(energyConsumed, unitPrice);
   const totalCosts = energy + other;
   const profit = useMemo(() => revenue - totalCosts, [revenue, totalCosts]);
   const profitPerKm = distanceKm > 0 ? profit / distanceKm : 0;

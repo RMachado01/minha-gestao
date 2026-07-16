@@ -6,6 +6,7 @@ export interface Cartao {
   id: string;
   apelido: string;
   bandeira: string;
+  banco: string;
   limiteTotal: number;
   limiteUsado: number;
   faturaAtual: number;
@@ -19,6 +20,7 @@ export const cartoes: Cartao[] = [
     id: "nubank",
     apelido: "Nubank",
     bandeira: "Mastercard",
+    banco: "Nubank",
     limiteTotal: 6000,
     limiteUsado: 1840.32,
     faturaAtual: 1840.32,
@@ -30,6 +32,7 @@ export const cartoes: Cartao[] = [
     id: "itau",
     apelido: "Itaú Click",
     bandeira: "Visa",
+    banco: "Itaú",
     limiteTotal: 4500,
     limiteUsado: 920.5,
     faturaAtual: 920.5,
@@ -41,6 +44,7 @@ export const cartoes: Cartao[] = [
     id: "inter",
     apelido: "Inter Gold",
     bandeira: "Mastercard",
+    banco: "Inter",
     limiteTotal: 3000,
     limiteUsado: 2380.7,
     faturaAtual: 2380.7,

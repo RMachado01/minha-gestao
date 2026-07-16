@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CreditCardRecord } from "@/lib/supabase/useCreditCards";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { BANKS, BENEFIT_OPERATORS, CARD_BRANDS, getBrand } from "@/lib/brands";
 import { MoneyInput, parseBRL } from "@/components/forms/MoneyInput";
 import { SelectField } from "@/components/forms/SelectField";
 
@@ -45,8 +46,9 @@ export function CardManagementDialog({
     const { error: updateError } = await supabase.from("credit_cards").update({
       nickname: String(data.get("nickname")).trim(),
       brand: String(data.get("brand")),
+      bank: isBenefit ? null : String(data.get("bank")),
       total_limit: isBenefit ? 0 : parseBRL(data.get("limit")),
-      color: String(data.get("color")),
+      color: isBenefit ? getBrand(BENEFIT_OPERATORS, String(data.get("brand"))).color : String(data.get("color")),
       closing_day: isBenefit ? 1 : Number(data.get("closing_day")),
       due_day: isBenefit ? 1 : Number(data.get("due_day")),
       benefit_mode: isBenefit ? benefitMode : null,
@@ -133,10 +135,17 @@ export function CardManagementDialog({
             ) : (
               <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={updateCard}>
                 <label className="field-label">Apelido<input className="field" name="nickname" defaultValue={card.nickname} minLength={2} required /></label>
-                <label className="field-label">{card.card_type === "benefit" ? "Operadora" : "Bandeira"}<input className="field" name="brand" defaultValue={card.brand} required /></label>
-                <label className="field-label">Cor<SelectField name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></SelectField></label>
+                {card.card_type === "benefit" ? (
+                  <label className="field-label">Operadora<select className="field" name="brand" defaultValue={card.brand}>{Object.keys(BENEFIT_OPERATORS).map((key) => <option key={key} value={key}>{BENEFIT_OPERATORS[key].label}</option>)}</select></label>
+                ) : (
+                  <>
+                    <label className="field-label">Bandeira<select className="field" name="brand" defaultValue={card.brand}>{Object.keys(CARD_BRANDS).map((key) => <option key={key} value={key}>{key}</option>)}</select></label>
+                    <label className="field-label">Banco<select className="field" name="bank" defaultValue={card.bank ?? "Outro"}>{Object.keys(BANKS).map((key) => <option key={key} value={key}>{BANKS[key].label}</option>)}</select></label>
+                  </>
+                )}
                 {card.card_type === "credit" ? <>
                   <label className="field-label">Limite total<MoneyInput name="limit" defaultValue={card.total_limit} required /></label>
+                  <label className="field-label">Cor alternativa<select className="field" name="color" defaultValue={card.color ?? "#006b3f"}><option value="#006b3f">Verde escuro</option><option value="#00a86b">Verde claro</option><option value="#34d399">Esmeralda</option><option value="#60a5fa">Azul</option><option value="#818cf8">Índigo</option><option value="#a78bfa">Violeta</option></select></label>
                   <label className="field-label">Dia de fechamento<input className="field" type="number" min="1" max="31" name="closing_day" defaultValue={card.closing_day} required /></label>
                   <label className="field-label">Dia de vencimento<input className="field" type="number" min="1" max="31" name="due_day" defaultValue={card.due_day} required /></label>
                 </> : <>

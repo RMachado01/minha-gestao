@@ -4,6 +4,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -28,6 +29,13 @@ interface CompareBarChartProps {
   /** Empilha as barras em vez de agrupar lado a lado. */
   stacked?: boolean;
   showLegend?: boolean;
+  /** Remove eixos, grid e legenda — barras "flutuando" para cards pequenos. */
+  dense?: boolean;
+  /**
+   * Valor de `xKey` a destacar (ex: mês atual, categoria selecionada).
+   * As demais barras ficam em tom neutro translúcido.
+   */
+  highlightX?: string | number;
 }
 
 /** Barras para comparação entre categorias discretas (entradas x saídas, etc). */
@@ -38,15 +46,21 @@ export function CompareBarChart({
   height = 300,
   stacked = false,
   showLegend = true,
+  dense = false,
+  highlightX,
 }: CompareBarChartProps) {
+  const legendVisible = showLegend && !dense;
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }} barGap={6}>
-        <CartesianGrid stroke={CHART.grid} vertical={false} />
-        <XAxis dataKey={xKey} {...AXIS_PROPS} />
-        <YAxis {...AXIS_PROPS} width={56} tickFormatter={(v) => formatBRLCompact(Number(v))} />
+      <BarChart data={data} margin={{ top: 8, right: 8, left: dense ? 0 : 4, bottom: 0 }} barGap={6}>
+        {!dense && <CartesianGrid stroke={CHART.grid} vertical={false} />}
+        {!dense && <XAxis dataKey={xKey} {...AXIS_PROPS} />}
+        {!dense && (
+          <YAxis {...AXIS_PROPS} width={56} tickFormatter={(v) => formatBRLCompact(Number(v))} />
+        )}
         <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-        {showLegend && <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: CHART.ink }} />}
+        {legendVisible && <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: CHART.ink }} />}
         {series.map((s) => (
           <Bar
             key={s.key}
@@ -56,7 +70,19 @@ export function CompareBarChart({
             stackId={stacked ? "stack" : undefined}
             radius={stacked ? [0, 0, 0, 0] : [6, 6, 0, 0]}
             maxBarSize={44}
-          />
+          >
+            {highlightX !== undefined &&
+              data.map((entry, i) => (
+                <Cell
+                  key={`cell-${s.key}-${i}`}
+                  fill={
+                    entry[xKey] === highlightX
+                      ? s.color
+                      : "color-mix(in oklab, var(--color-ink) 14%, transparent)"
+                  }
+                />
+              ))}
+          </Bar>
         ))}
       </BarChart>
     </ResponsiveContainer>

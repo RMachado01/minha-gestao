@@ -21,6 +21,8 @@ import { CHART } from "@/components/charts/chartTheme";
 import { BillCalendar } from "@/components/cards/BillCalendar";
 import { CardRegistration } from "@/components/cards/CardRegistration";
 import { CardManagementDialog } from "@/components/cards/CardManagementDialog";
+import { CardBrandMark } from "@/components/cards/CardBrandMark";
+import { BANKS, getBrand } from "@/lib/brands";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 import {
   faturasHistorico,
@@ -69,7 +71,9 @@ function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Carta
   const uso = cartao.limiteUsado / cartao.limiteTotal;
   const disponivel = cartao.limiteTotal - cartao.limiteUsado;
   const alerta = uso > ALERTA_USO;
-  const fillColor = alerta ? "var(--color-warn)" : cartao.cor;
+  const bancoIdentity = cartao.banco && cartao.banco !== "Outro" ? getBrand(BANKS, cartao.banco) : null;
+  const corBase = bancoIdentity?.color ?? cartao.cor;
+  const fillColor = alerta ? "var(--color-warn)" : corBase;
 
   return (
     <GlassCard
@@ -85,16 +89,16 @@ function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Carta
         <div
           className="relative mb-4 h-40 overflow-hidden rounded-2xl p-4"
           style={{
-            background: `linear-gradient(135deg, color-mix(in oklab, ${cartao.cor} 60%, #080c16), color-mix(in oklab, ${cartao.cor} 20%, #080c16))`,
-            border: `1px solid color-mix(in oklab, ${cartao.cor} 45%, transparent)`,
-            boxShadow: `0 18px 40px -26px color-mix(in oklab, ${cartao.cor} 70%, transparent)`,
+            background: `linear-gradient(135deg, color-mix(in oklab, ${corBase} 60%, #080c16), color-mix(in oklab, ${corBase} 20%, #080c16))`,
+            border: `1px solid color-mix(in oklab, ${corBase} 45%, transparent)`,
+            boxShadow: `0 18px 40px -26px color-mix(in oklab, ${corBase} 70%, transparent)`,
           }}
         >
           {/* Brilho decorativo */}
           <span
             aria-hidden
             className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full opacity-40 blur-2xl"
-            style={{ background: cartao.cor }}
+            style={{ background: corBase }}
           />
           <div className="relative flex h-full flex-col justify-between">
             <div className="flex items-start justify-between">
@@ -110,17 +114,22 @@ function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Carta
                   strokeWidth={2.5}
                 />
               </div>
-              <span className="text-sm font-semibold tracking-wide text-white/90">
-                {cartao.bandeira}
-              </span>
+              <CardBrandMark brand={cartao.bandeira} />
             </div>
             <div>
               <p className="tnum text-sm tracking-[0.3em] text-white/55">
                 •••• •••• •••• ••••
               </p>
-              <p className="mt-1.5 text-base font-semibold text-white">
-                {cartao.apelido}
-              </p>
+              <div className="mt-1.5 flex items-end justify-between gap-2">
+                <p className="text-base font-semibold text-white">
+                  {cartao.apelido}
+                </p>
+                {bancoIdentity && (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-white/75">
+                    {bancoIdentity.label}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -230,6 +239,7 @@ export default function CartoesPage() {
     id: card.id,
     apelido: card.nickname,
     bandeira: card.brand,
+    banco: card.bank ?? "",
     limiteTotal: card.total_limit,
     limiteUsado: card.current_bill,
     faturaAtual: card.current_bill,

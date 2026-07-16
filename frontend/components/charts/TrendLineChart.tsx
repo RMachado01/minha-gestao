@@ -31,6 +31,8 @@ interface TrendLineChartProps {
   height?: number;
   /** Esconde eixos/grid — usado no mini-gráfico do hero. */
   minimal?: boolean;
+  /** Alias de `minimal` para consistência com o prop `dense` dos outros gráficos. */
+  dense?: boolean;
   showLegend?: boolean;
 }
 
@@ -41,11 +43,13 @@ export function TrendLineChart({
   series,
   height = 260,
   minimal = false,
+  dense = false,
   showLegend = false,
 }: TrendLineChartProps) {
+  const isMinimal = minimal || dense;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, left: minimal ? 0 : 4, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: isMinimal ? 0 : 4, bottom: 0 }}>
         <defs>
           {series.map((s) => (
             <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -54,16 +58,16 @@ export function TrendLineChart({
             </linearGradient>
           ))}
         </defs>
-        {!minimal && <CartesianGrid stroke={CHART.grid} vertical={false} />}
-        {!minimal && <XAxis dataKey={xKey} {...AXIS_PROPS} />}
-        {!minimal && (
+        {!isMinimal && <CartesianGrid stroke={CHART.grid} vertical={false} />}
+        {!isMinimal && <XAxis dataKey={xKey} {...AXIS_PROPS} />}
+        {!isMinimal && (
           <YAxis
             {...AXIS_PROPS}
             width={56}
             tickFormatter={(v) => formatBRLCompact(Number(v))}
           />
         )}
-        {!minimal && <Tooltip content={<ChartTooltip />} cursor={{ stroke: CHART.grid }} />}
+        {!isMinimal && <Tooltip content={<ChartTooltip />} cursor={{ stroke: CHART.grid }} />}
         {showLegend && <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: CHART.ink }} />}
         {series.map((s) =>
           s.area ? (

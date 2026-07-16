@@ -1,6 +1,6 @@
 "use client";
 
-import { PieChart, Flame, Layers, Receipt, TrendingUp } from "lucide-react";
+import { LoaderCircle, PieChart, Flame, Layers, Receipt, TrendingUp } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -15,12 +15,7 @@ import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CATEGORICAL, CHART } from "@/components/charts/chartTheme";
 
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
-import { usePeriodo } from "@/lib/usePeriodo";
-import {
-  gastosPorCategoria,
-  gastosTotal,
-  gastosHistorico,
-} from "@/lib/data/empty";
+import { useFinanceSummary } from "@/lib/supabase/useFinanceSummary";
 
 /**
  * Composição de Gastos (CLAUDE.md 6.2 · item 3).
@@ -28,16 +23,25 @@ import {
  * Gasto é saída: crescer é ruim → TrendBadge com `invert`.
  */
 export default function GastosPage() {
-  const { modo } = usePeriodo();
+  const { loading, error, gastosPorCategoria, gastosTotal, gastosHistorico } = useFinanceSummary();
 
-  if (gastosPorCategoria.length === 0) {
+  if (loading) {
+    return (
+      <section className="flex flex-col gap-6">
+        <PageHeader eyebrow="Finanças" title="Composição de gastos" description="Entenda quais categorias mais consomem seu orçamento e como evoluem no tempo." />
+        <p className="flex items-center gap-2 text-sm text-ink-muted"><LoaderCircle className="size-4 animate-spin" />Carregando seus gastos...</p>
+      </section>
+    );
+  }
+
+  if (error || gastosPorCategoria.length === 0) {
     return (
       <section className="flex flex-col gap-6">
         <PageHeader eyebrow="Finanças" title="Composição de gastos" description="Entenda quais categorias mais consomem seu orçamento e como evoluem no tempo." />
         <EmptyState
           icon={PieChart}
-          title="Nenhum gasto registrado"
-          description="A composição por categoria será calculada automaticamente a partir dos seus lançamentos de saída."
+          title={error || "Nenhum gasto registrado"}
+          description={error ? "Recarregue a página para tentar novamente." : "A composição por categoria será calculada automaticamente a partir dos seus lançamentos de saída."}
           actionLabel="Registrar um gasto"
           actionHref="/lancamentos"
         />
@@ -62,8 +66,7 @@ export default function GastosPage() {
   const penultimo = gastosHistorico[gastosHistorico.length - 2];
   const tendenciaTotal = variacao(ultimo.gastos, penultimo.gastos);
 
-  const historicoSubtitle =
-    modo === "anual" ? "Total gasto mês a mês no ano" : "Total gasto nos últimos 6 meses";
+  const historicoSubtitle = "Total gasto nos últimos 6 meses";
 
   return (
     <section aria-labelledby="gastos-heading" className="gz-page flex flex-col gap-6">

@@ -36,6 +36,12 @@ export function formatPercent(fraction: number, signed = false): string {
   return signed && fraction > 0 ? `+${s}` : s;
 }
 
+/** dd/mm/yyyy (ou dd/mm com `withYear=false`) a partir de uma data ISO (YYYY-MM-DD). */
+export function formatDateBR(iso: string, withYear = true): string {
+  const [y, m, d] = iso.split("-");
+  return withYear ? `${d}/${m}/${y}` : `${d}/${m}`;
+}
+
 /** Variação percentual entre dois períodos, protegido contra divisão por zero. */
 export function variacao(atual: number, anterior: number): number {
   if (anterior === 0) return 0;

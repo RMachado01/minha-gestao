@@ -26,7 +26,7 @@ export function TopBar() {
           <Link
             href="/lancamentos"
             data-tour-desktop="new-launch"
-            className="btn-primary hidden min-h-11 px-4 sm:inline-flex"
+            className="btn-primary hidden min-h-11 px-4 lg:inline-flex"
           >
             <span className="grid size-6 place-items-center rounded-lg bg-white/15">
               <Plus className="size-4" />

@@ -6,7 +6,6 @@ import {
   CreditCard,
   Car,
   Warehouse,
-  CirclePlus,
   Settings,
   List,
   CalendarCheck,
@@ -28,7 +27,6 @@ export interface NavItem {
 /** Navegação principal. */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Visão Geral", icon: LayoutDashboard, group: "principal" },
-  { href: "/lancamentos", label: "Lançamentos", icon: CirclePlus, group: "financas" },
   { href: "/transacoes", label: "Transações", icon: List, group: "financas" },
   { href: "/fluxo-caixa", label: "Fluxo de Caixa", icon: ArrowLeftRight, group: "financas" },
   { href: "/gastos", label: "Gastos", icon: PieChart, group: "financas" },

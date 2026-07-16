@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
+  const isRecovery = searchParams.get("next") === "recovery";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", origin));
@@ -15,7 +16,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=config", origin));
   }
 
-  const response = NextResponse.redirect(new URL("/login?confirmed=1", origin));
+  // Recuperação de senha precisa manter a sessão para chegar até /redefinir-senha
+  // e chamar updateUser; confirmação de cadastro não deve manter o usuário logado.
+  const destination = isRecovery ? "/redefinir-senha" : "/login?confirmed=1";
+  const response = NextResponse.redirect(new URL(destination, origin));
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -32,9 +36,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=auth_failed", origin));
   }
 
-  // A confirmação valida o e-mail, mas não mantém o usuário autenticado.
-  // O primeiro acesso deve acontecer explicitamente pela tela de login.
-  await supabase.auth.signOut({ scope: "local" });
+  if (!isRecovery) {
+    // O primeiro acesso após confirmar o e-mail deve acontecer explicitamente pela tela de login.
+    await supabase.auth.signOut({ scope: "local" });
+  }
 
   return response;
 }
