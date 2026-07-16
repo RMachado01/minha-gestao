@@ -110,41 +110,45 @@ export default function GoalsPage() {
       return;
     }
 
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) {
-      setError("Sua sessão expirou. Entre novamente.");
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        setError("Sua sessão expirou. Entre novamente.");
+        return;
+      }
+
+      const [goalsResult, eventsResult, transactionsResult, investmentsResult] = await Promise.all([
+        supabase.from("financial_goals").select("*").order("created_at", { ascending: false }),
+        supabase.from("goal_events").select("*").order("occurred_on", { ascending: false }).limit(150),
+        supabase.from("transactions").select("type,amount,occurred_on,category").order("occurred_on", { ascending: false }).limit(1000),
+        supabase.from("investments").select("invested_amount"),
+      ]);
+
+      if (goalsResult.error) {
+        setError(goalsResult.error.code === "42P01"
+          ? "O módulo de metas ainda precisa da migration 202607160001 no Supabase."
+          : "Não foi possível carregar suas metas.");
+      } else {
+        const loadedGoals = ((goalsResult.data ?? []) as RawGoal[]).map(normalizeGoal);
+        setGoals(loadedGoals);
+        setSelectedId((current) => current || loadedGoals[0]?.id || "");
+        if (loadedGoals[0]?.custom_annual_rate !== null) setCustomRate(loadedGoals[0].custom_annual_rate);
+      }
+
+      if (!eventsResult.error) {
+        setEvents(((eventsResult.data ?? []) as RawEvent[]).map((event) => ({ ...event, amount: event.amount === null ? null : Number(event.amount) })));
+      }
+      if (!transactionsResult.error) {
+        setTransactions(((transactionsResult.data ?? []) as RawTransaction[]).map((item) => ({ ...item, amount: Number(item.amount) })));
+      }
+      if (!investmentsResult.error) {
+        setInvestmentTotal((investmentsResult.data ?? []).reduce((sum, item) => sum + Number(item.invested_amount), 0));
+      }
+    } catch {
+      setError("Não foi possível carregar os dados. Recarregue a página e tente novamente.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const [goalsResult, eventsResult, transactionsResult, investmentsResult] = await Promise.all([
-      supabase.from("financial_goals").select("*").order("created_at", { ascending: false }),
-      supabase.from("goal_events").select("*").order("occurred_on", { ascending: false }).limit(150),
-      supabase.from("transactions").select("type,amount,occurred_on,category").order("occurred_on", { ascending: false }).limit(1000),
-      supabase.from("investments").select("invested_amount"),
-    ]);
-
-    if (goalsResult.error) {
-      setError(goalsResult.error.code === "42P01"
-        ? "O módulo de metas ainda precisa da migration 202607160001 no Supabase."
-        : "Não foi possível carregar suas metas.");
-    } else {
-      const loadedGoals = ((goalsResult.data ?? []) as RawGoal[]).map(normalizeGoal);
-      setGoals(loadedGoals);
-      setSelectedId((current) => current || loadedGoals[0]?.id || "");
-      if (loadedGoals[0]?.custom_annual_rate !== null) setCustomRate(loadedGoals[0].custom_annual_rate);
-    }
-
-    if (!eventsResult.error) {
-      setEvents(((eventsResult.data ?? []) as RawEvent[]).map((event) => ({ ...event, amount: event.amount === null ? null : Number(event.amount) })));
-    }
-    if (!transactionsResult.error) {
-      setTransactions(((transactionsResult.data ?? []) as RawTransaction[]).map((item) => ({ ...item, amount: Number(item.amount) })));
-    }
-    if (!investmentsResult.error) {
-      setInvestmentTotal((investmentsResult.data ?? []).reduce((sum, item) => sum + Number(item.invested_amount), 0));
-    }
-    setLoading(false);
   }
 
   useEffect(() => {
