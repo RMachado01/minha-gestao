@@ -199,3 +199,103 @@ export function answerFinancialQuestion(
 
   return `Resumo: saldo calculado ${currency(balance)}, investimentos ${currency(investmentTotal)}, faturas ${currency(account.creditCardBills ?? 0)}, VR/VA ${currency(account.benefitBalance ?? 0)} e ${goals.filter((goal) => goal.status === "active").length} metas ativas. Pergunte sobre comparação mensal, taxa de economia, reserva, gastos, cartões, aportes ou prazo de uma meta.`;
 }
+
+export interface Insight {
+  id: string;
+  tone: "pos" | "neg" | "warn" | "neutral";
+  text: string;
+}
+
+/**
+ * Destaques automáticos calculados a partir dos dados da conta — mostrados
+ * antes de qualquer pergunta, para o assessor abrir já com o que importa
+ * em vez de esperar o usuário adivinhar o que perguntar.
+ */
+export function computeInsights(
+  transactions: TransactionSummary[],
+  goals: FinancialGoal[],
+  account: AdvisorAccountContext = {},
+): Insight[] {
+  const currency = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const insights: Insight[] = [];
+
+  const monthly = new Map<string, { income: number; expenses: number }>();
+  const category = new Map<string, Map<string, number>>();
+  for (const item of transactions) {
+    const month = item.occurred_on.slice(0, 7);
+    const current = monthly.get(month) ?? { income: 0, expenses: 0 };
+    if (item.type === "income") current.income += item.amount;
+    else current.expenses += item.amount;
+    monthly.set(month, current);
+
+    if (item.type === "expense" || item.type === "benefit") {
+      const perCategory = category.get(month) ?? new Map<string, number>();
+      perCategory.set(item.category, (perCategory.get(item.category) ?? 0) + item.amount);
+      category.set(month, perCategory);
+    }
+  }
+  const months = [...monthly.keys()].sort().reverse();
+  const currentMonth = monthly.get(months[0] ?? "") ?? { income: 0, expenses: 0 };
+  const previousMonth = monthly.get(months[1] ?? "") ?? { income: 0, expenses: 0 };
+
+  // 1. Variação de gastos mês a mês.
+  if (months.length >= 2 && previousMonth.expenses > 0) {
+    const delta = ((currentMonth.expenses - previousMonth.expenses) / previousMonth.expenses) * 100;
+    if (Math.abs(delta) >= 10) {
+      insights.push({
+        id: "spending-trend",
+        tone: delta > 0 ? "neg" : "pos",
+        text: `Seus gastos ${delta > 0 ? "subiram" : "caíram"} ${Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}% em relação ao mês passado (${currency(currentMonth.expenses)} vs. ${currency(previousMonth.expenses)}).`,
+      });
+    }
+  }
+
+  // 2. Categoria com maior alta.
+  const currentCategories = category.get(months[0] ?? "");
+  const previousCategories = category.get(months[1] ?? "");
+  if (currentCategories && previousCategories) {
+    let worst: { name: string; delta: number; value: number } | null = null;
+    for (const [name, value] of currentCategories) {
+      const before = previousCategories.get(name) ?? 0;
+      if (before < 50) continue; // ignora categorias novas/irrelevantes
+      const delta = ((value - before) / before) * 100;
+      if (delta >= 30 && (!worst || delta > worst.delta)) worst = { name, delta, value };
+    }
+    if (worst) {
+      insights.push({
+        id: "category-spike",
+        tone: "warn",
+        text: `${worst.name} está ${worst.delta.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}% acima do mês passado, somando ${currency(worst.value)} este mês.`,
+      });
+    }
+  }
+
+  // 3. Taxa de economia do mês.
+  if (currentMonth.income > 0) {
+    const rate = ((currentMonth.income - currentMonth.expenses) / currentMonth.income) * 100;
+    if (rate < 0) {
+      insights.push({ id: "overspending", tone: "neg", text: `Você gastou ${currency(currentMonth.expenses - currentMonth.income)} a mais do que recebeu este mês.` });
+    } else if (rate >= 30) {
+      insights.push({ id: "good-savings", tone: "pos", text: `Ótima taxa de economia este mês: ${rate.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}% da sua renda.` });
+    }
+  }
+
+  // 4. Progresso da meta mais próxima da conclusão.
+  const activeGoals = goals.filter((goal) => goal.status === "active" && goal.target_amount > 0);
+  if (activeGoals.length > 0) {
+    const closest = [...activeGoals].sort((a, b) => b.current_amount / b.target_amount - a.current_amount / a.target_amount)[0];
+    const progress = (closest.current_amount / closest.target_amount) * 100;
+    if (progress >= 80 && progress < 100) {
+      insights.push({ id: "goal-close", tone: "pos", text: `Sua meta "${closest.name}" está ${progress.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}% concluída — falta pouco!` });
+    }
+  } else if (transactions.length > 0) {
+    insights.push({ id: "no-goals", tone: "neutral", text: "Você ainda não tem metas ativas. Que tal criar uma para direcionar sua economia?" });
+  }
+
+  // 5. Fatura de cartão em aberto relevante.
+  if ((account.creditCardBills ?? 0) > 0 && currentMonth.income > 0 && (account.creditCardBills ?? 0) / currentMonth.income >= 0.3) {
+    insights.push({ id: "card-bill", tone: "warn", text: `As faturas de cartão em aberto (${currency(account.creditCardBills ?? 0)}) já comprometem uma fatia grande da sua renda do mês.` });
+  }
+
+  return insights.slice(0, 3);
+}
