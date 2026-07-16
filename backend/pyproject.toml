@@ -12,6 +12,7 @@ dependencies = [
   "pwdlib[argon2]>=0.2,<1",
   "python-multipart>=0.0.20,<1",
   "PyJWT[crypto]>=2.10,<3",
+  "slowapi>=0.1.9,<1",
 ]
 
 [project.optional-dependencies]

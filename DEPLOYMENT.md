@@ -258,22 +258,41 @@ Após o deploy, copie a URL do backend e atualize `NEXT_PUBLIC_API_URL` na Verce
 | **Confirmação de email** | Implementado | Supabase Auth envia confirmação; conta só ativa após clique |
 | **Isolamento** (Art. 46) | RLS no banco | Impossível acessar dados alheios via consulta direta |
 | **Criptografia** (Art. 46) | Supabase/HTTPS | Dados em trânsito via TLS; senhas em hash bcrypt/argon2 no Supabase Auth |
-| **Exclusão** (Art. 18) | A implementar | Adicionar botão "Excluir minha conta" que apaga `auth.users` (cascade deleta tudo) |
-| **Portabilidade** (Art. 18) | A implementar | Adicionar exportação de dados em JSON/CSV |
-| **Logs e auditoria** (Art. 50) | Parcial | `created_at`/`updated_at` em tabelas; expandir com log de auditoria para alterações críticas |
+| **Exclusão** (Art. 18) | Implementado | Botão "Excluir minha conta" em Configurações chama a RPC `delete_own_account()` (`security definer`, valida `auth.uid()`, apaga `auth.users` e cascateia por FK) |
+| **Portabilidade** (Art. 18) | Implementado | "Exportar meus dados" em Configurações baixa um JSON com todas as tabelas do usuário |
+| **Consentimento explícito** | Implementado | Checkbox obrigatório no cadastro ("Li e aceito os Termos de Uso e a Política de Privacidade") |
+| **Log de consentimento** | Implementado | Cada aceite grava em `consent_logs` (tipo, versão, user agent, timestamp) |
+| **Logs e auditoria** (Art. 50) | Parcial | `created_at`/`updated_at` em todas as tabelas; ainda não há um log de auditoria dedicado para alterações críticas (ex: histórico de edição de um lançamento) |
+| **Política de retenção** | Documentada, não automatizada | Ver seção abaixo — a exclusão sob demanda cobre o direito do titular; ainda não há expurgo automático por inatividade |
+
+### Política de retenção de dados
+
+- Enquanto a conta estiver ativa, os dados são mantidos indefinidamente para permitir o uso do produto (histórico financeiro, gráficos de evolução).
+- O titular pode solicitar a exclusão a qualquer momento pelo botão "Excluir minha conta" — a remoção é imediata e cascateia por chave estrangeira (nenhuma cópia retida).
+- `consent_logs` (registro de aceite dos termos) é mantido mesmo após a exclusão da conta por um período de comprovação legal, já que não referencia dados financeiros e serve como prova de consentimento.
+- **Ainda não implementado**: expurgo automático de contas inativas há N anos. Se o produto for a público, definir esse prazo (ex.: 5 anos sem login) e implementar via Supabase Scheduled Function/cron chamando `delete_own_account`-equivalente para contas inativas, com aviso prévio por e-mail.
 
 ### O que falta para LGPD completa
 
-1. **Termos de uso e política de privacidade** — exibir no cadastro com checkbox de aceite obrigatório. Deve descrever quais dados são coletados, finalidade, prazo de retenção e como solicitar exclusão.
+1. **Log de auditoria de alterações críticas** — hoje só existe `created_at`/`updated_at`; para trilha de auditoria completa (Art. 50), considerar uma tabela `audit_log` alimentada por trigger nas tabelas financeiras.
+2. **Expurgo automático por retenção** — ver seção acima.
 
-2. **Botão "Excluir minha conta"** — em Configuracoes, deve chamar `supabase.auth.admin.deleteUser(id)` (ou endpoint backend dedicado) que remove `auth.users`, cascateando a exclusão de todos os dados via foreign keys.
+Itens 1-4 originais (termos, botão de exclusão, exportação, checkbox de consentimento) já estão implementados — esta seção foi atualizada para refletir o estado real do código.
 
-3. **Exportação de dados** — endpoint que retorna todos os dados do usuário em JSON ou CSV (direito de portabilidade, Art. 18).
+---
 
-4. **Consentimento explícito** — checkbox no formulário de cadastro: "Li e aceito os Termos de Uso e Política de Privacidade".
+## Segurança — DDoS, força bruta e entrada forçada
 
-5. **Log de consentimento** — registrar data/hora/IP do aceite dos termos.
+O que já está no código (verificado nesta auditoria):
+- **Headers de segurança** (`frontend/next.config.ts`): CSP, HSTS, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- **RLS em 100% das tabelas**, políticas `_owner` filtrando por `auth.uid()`, funções `security definer` com `search_path` fixado e checagem explícita de `auth.uid()` antes de qualquer ação sensível (`delete_own_account`, `record_goal_event`, `register_benefit_purchase`).
+- **Sem chaves secretas expostas no frontend** (nenhuma `service_role`, nenhuma chave hardcoded — tudo via variável de ambiente).
+- **Sem enumeração de usuário**: login e recuperação de senha sempre respondem de forma genérica; cadastro com e-mail já existente mostra a mesma tela de sucesso de um cadastro novo, sem confirmar que a conta já existe.
+- **Backend FastAPI**: `SUPABASE_JWT_SECRET`/`SECRET_KEY` agora **bloqueiam a inicialização** se `APP_ENV` não for `development` e o valor ainda for o padrão de desenvolvimento (antes, um deploy sem a variável configurada aceitaria qualquer token assinado com o segredo público do código-fonte — falha crítica corrigida). Rate limit básico (`slowapi`, 100 req/min por IP) adicionado como primeira barreira contra abuso na API.
 
-6. **Política de retenção** — definir prazo (ex: dados mantidos por 5 anos após última atividade; após esse prazo, exclusão automática ou notificação).
+O que precisa ser configurado **fora do código** (painéis, não arquivos deste repositório):
 
-Os itens 1-4 são os mais urgentes antes de colocar em produção com usuários reais.
+1. **Rate limit de autenticação (Supabase)** — Authentication → Rate Limits no painel do projeto. Confirme/aperte os limites de: envio de e-mail (confirmação/recovery), tentativas de login por IP, criação de conta por IP. Esses limites do Supabase são a proteção real contra força bruta de senha e contra flood de e-mails de recuperação — nenhuma proteção client-side substitui isso.
+2. **Proteção DDoS na borda (Vercel)** — a Vercel já aplica mitigação de DDoS de rede/infraestrutura por padrão em todos os planos. Em Project Settings → Security, avalie ativar/ajustar o **Attack Challenge Mode** e (se disponível no seu plano) regras de **Firewall**/rate limit por rota para as páginas de autenticação (`/login`, `/cadastro`, `/redefinir-senha`).
+3. **CAPTCHA no cadastro/login** — Supabase Auth suporta hCaptcha/Turnstile nativamente (Authentication → Attack Protection). Recomendado antes de abrir a aplicação para público amplo, para reduzir criação de contas em massa e brute force automatizado.
+4. **Alertas de uso anômalo** — configurar alertas de billing/uso no Supabase e na Vercel para detectar picos incomuns de tráfego (sinal precoce de DDoS ou scraping).
