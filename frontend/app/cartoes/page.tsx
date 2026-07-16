@@ -298,11 +298,11 @@ export default function CartoesPage() {
               <span className="text-sm font-medium text-ink-soft">
                 Faturas em aberto
               </span>
-              <div className="mt-2 flex items-end gap-3">
-                <span className="tnum text-4xl font-bold text-ink sm:text-5xl">
+              <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="tnum min-w-0 shrink break-words text-4xl font-bold text-ink sm:text-5xl">
                   {formatBRL(faturasEmAberto)}
                 </span>
-                <TrendBadge value={tendenciaFatura} invert className="mb-1" />
+                <TrendBadge value={tendenciaFatura} invert className="mb-1 shrink-0" />
               </div>
               <p className="mt-1.5 text-xs text-ink-muted">
                 Soma das faturas atuais dos {cartoes.length} cartões · vs. mês
@@ -346,7 +346,7 @@ export default function CartoesPage() {
         </GlassCard>
 
         <KpiCard
-          className="col-span-6 lg:col-span-3"
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
           label="Limite disponível"
           value={formatBRL(disponivelGlobal)}
           tone="pos"
@@ -354,7 +354,7 @@ export default function CartoesPage() {
           hint={`de ${formatBRL(limiteTotal)} no total`}
         />
         <KpiCard
-          className="col-span-6 lg:col-span-3"
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
           label="Próximo vencimento"
           value={proximoVencimento}
           icon={<CalendarClock className="h-4 w-4" strokeWidth={2} />}
