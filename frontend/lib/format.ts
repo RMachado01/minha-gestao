@@ -20,6 +20,11 @@ const pct = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
+const compactNumber = new Intl.NumberFormat("pt-BR", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 /** R$ 1.234,56 */
 export function formatBRL(value: number): string {
   return brl.format(value);
@@ -40,6 +45,11 @@ export function formatPercent(fraction: number, signed = false): string {
 export function formatDateBR(iso: string, withYear = true): string {
   const [y, m, d] = iso.split("-");
   return withYear ? `${d}/${m}/${y}` : `${d}/${m}`;
+}
+
+/** 36,7 mi / 1,2 bi — para volume, contagens e outros números grandes sem moeda. */
+export function formatCompactNumber(value: number): string {
+  return compactNumber.format(value);
 }
 
 /** Variação percentual entre dois períodos, protegido contra divisão por zero. */

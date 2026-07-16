@@ -175,6 +175,9 @@ Na aba **Settings > Environment Variables**, adicione:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://SEU-REF.supabase.co` | Production, Preview, Development |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOi...` | Production, Preview, Development |
 | `NEXT_PUBLIC_API_URL` | URL do backend em produção | Production |
+| `BRAPI_TOKEN` | Token gratuito de https://brapi.dev | Production, Preview, Development |
+
+`BRAPI_TOKEN` alimenta as cotações ao vivo e o radar de dividendos em Investimentos (`app/api/market/*`, roda no servidor — nunca é enviado ao navegador). Sem essa variável os painéis de mercado mostram um aviso, mas o resto da página continua funcionando normalmente.
 
 ### 4.3 Deploy
 
