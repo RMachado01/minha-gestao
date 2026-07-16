@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, LockKeyhole, LoaderCircle, Wallet } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Captcha, isCaptchaEnabled, type CaptchaHandle } from "@/components/auth/Captcha";
 
 export default function CadastroPage() {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,8 @@ export default function CadastroPage() {
   const [success, setSuccess] = useState(false);
   const [uberMode, setUberMode] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<CaptchaHandle>(null);
 
   function handleUberToggle(checked: boolean) {
     setUberMode(checked);
@@ -46,6 +49,12 @@ export default function CadastroPage() {
       return;
     }
 
+    if (isCaptchaEnabled() && !captchaToken) {
+      setError("Resolva o captcha para continuar.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
     if (!supabase) {
       setError(
@@ -61,8 +70,13 @@ export default function CadastroPage() {
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: { full_name: String(data.get("name")), uber_mode: uberMode },
+        captchaToken: captchaToken ?? undefined,
       },
     });
+
+    // Token do hCaptcha é de uso único — sempre reseta após a tentativa.
+    captchaRef.current?.resetCaptcha();
+    setCaptchaToken(null);
 
     if (result.error) {
       setError(result.error.message);
@@ -245,13 +259,19 @@ export default function CadastroPage() {
             </span>
           </label>
 
+          <Captcha ref={captchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+
           {error && (
             <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg">
               {error}
             </p>
           )}
 
-          <button type="submit" className="btn-primary mt-2 w-full" disabled={loading}>
+          <button
+            type="submit"
+            className="btn-primary mt-2 w-full"
+            disabled={loading || (isCaptchaEnabled() && !captchaToken)}
+          >
             {loading ? (
               <LoaderCircle className="size-4 animate-spin" />
             ) : (
