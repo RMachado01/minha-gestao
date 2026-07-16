@@ -488,6 +488,9 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Formulário de receitas, despesas e VR/VA persistido na Supabase; compras no crédito exigem um cartão real e gravam `credit_card_id`.
 - Histórico de transações consulta dados reais da Supabase e persiste edição/exclusão; lançamentos recém-criados podem abrir e destacar imediatamente sua linha no extrato.
 - Feedback de sucesso usa Motion com confirmação visual, resumo do lançamento e próxima ação; transições de página respeitam `prefers-reduced-motion`.
+- Rolagem usa Lenis no desktop com fallback nativo para toque e movimento reduzido; modais preservam rolagem interna independente.
+- Lançamentos aceitam categorias personalizadas persistidas com `category_id`, e compras no crédito apresentam cartões cadastrados como escolhas visuais.
+- Selects nativos recebem superfície, seta e estados de foco consistentes; o fundo global usa camadas fixas contínuas sem emendas durante o scroll.
 - Campo monetário reutilizável com prefixo `R$` e preview do cartão, fechamento, vencimento, limite e fatura atual.
 - Inputs com prefixo monetário e ícones usam espaçamento estrutural próprio, sem sobrepor conteúdo em temas claro ou escuro.
 - Módulo **Sonhos e Metas** com objetivo, descrição, valor-alvo, saldo atual, aporte fixo ou percentual da renda, data desejada e cenário preferido.

@@ -453,7 +453,7 @@ function EditPanel({
       />
 
       {/* Panel */}
-      <aside className="relative z-10 flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-[var(--color-line)] bg-[var(--color-bg)] p-6 shadow-2xl sm:p-7">
+      <aside data-lenis-prevent className="relative z-10 flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-[var(--color-line)] bg-[var(--color-bg)] p-6 shadow-2xl sm:p-7">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">
