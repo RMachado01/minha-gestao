@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LineChart, Wallet, Layers, Banknote, Landmark, Settings2 } from "lucide-react";
+import { LineChart, Wallet, Layers, Banknote, Landmark, Settings2, Radar, BarChart3 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -11,13 +11,14 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CompositionDonut } from "@/components/charts/CompositionDonut";
 import { CHART, CATEGORICAL } from "@/components/charts/chartTheme";
-import { formatBRL, formatBRLCompact, formatDateBR, formatPercent } from "@/lib/format";
+import { formatBRL, formatBRLCompact, formatCompactNumber, formatDateBR, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { INVESTMENT_TYPE_LABEL, useInvestments, type InvestmentPosition } from "@/lib/supabase/useInvestments";
 import { InvestmentRegistration } from "@/components/investments/InvestmentRegistration";
 import { InvestmentManageDialog } from "@/components/investments/InvestmentManageDialog";
 import { InvestorWelcome } from "@/components/investments/InvestorWelcome";
+import { useDividendWatchlist, usePortfolioQuotes } from "@/lib/market/useMarketQuotes";
 
 const INCOME_LABEL: Record<string, string> = {
   dividendo: "Dividendo",
@@ -38,6 +39,10 @@ export default function InvestimentosPage() {
 
   const alocacaoTotal = alocacao.reduce((acc, s) => acc + s.value, 0);
   const { patrimonio, investido, rentabilidade, ganho, trendMes, proventosMes, proventosTotal } = kpis;
+
+  const carteiraTickers = positions.map((p) => p.ticker).filter((ticker): ticker is string => Boolean(ticker));
+  const carteiraQuotes = usePortfolioQuotes(carteiraTickers);
+  const dividendWatchlist = useDividendWatchlist();
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,6 +254,95 @@ export default function InvestimentosPage() {
           </GlassCard>
         </BentoGrid>
       )}
+
+      {/* ---------- Mercado: cotações ao vivo (brapi.dev) ---------- */}
+      <div className="flex flex-col gap-1 pt-2">
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Mercado</span>
+        <h2 className="text-lg font-semibold text-ink">Cotações e dividendos ao vivo</h2>
+        <p className="text-sm text-ink-muted">Dados via brapi.dev, com atraso de alguns minutos. Não é recomendação de investimento.</p>
+      </div>
+
+      <BentoGrid>
+        {carteiraTickers.length > 0 && (
+          <GlassCard variant="liquid" className="col-span-12">
+            <SectionHeader title="Cotações da carteira" subtitle="Ativos com ticker cadastrado" action={<BarChart3 className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+            {carteiraQuotes.loading ? (
+              <p className="mt-4 text-sm text-ink-muted">Carregando cotações...</p>
+            ) : carteiraQuotes.error ? (
+              <p className="mt-4 text-sm text-ink-muted">{carteiraQuotes.error}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="mt-2 w-full min-w-[640px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-ink-muted">
+                      <th className="py-3 pr-4 font-medium">Ativo</th>
+                      <th className="py-3 pr-4 text-right font-medium">Preço</th>
+                      <th className="py-3 pr-4 text-right font-medium">No dia</th>
+                      <th className="py-3 pr-4 text-right font-medium">Máxima</th>
+                      <th className="py-3 pr-4 text-right font-medium">Mínima</th>
+                      <th className="py-3 text-right font-medium">Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {carteiraQuotes.quotes.map((quote) => (
+                      <tr key={quote.ticker} className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]">
+                        <td className="py-3 pr-4 font-medium text-ink">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
+                            <span className="text-ink-soft">{quote.name}</span>
+                          </div>
+                        </td>
+                        <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
+                        <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
+                        <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayHigh !== null ? formatBRL(quote.dayHigh) : "—"}</td>
+                        <td className="tnum py-3 pr-4 text-right text-ink-soft">{quote.dayLow !== null ? formatBRL(quote.dayLow) : "—"}</td>
+                        <td className="tnum py-3 text-right text-ink-muted">{quote.volume !== null ? formatCompactNumber(quote.volume) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </GlassCard>
+        )}
+
+        <GlassCard variant="liquid" className="col-span-12">
+          <SectionHeader title="Radar de dividendos" subtitle="Ranking por yield aproximado (12 meses) — universo curado da B3" action={<Radar className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+          {dividendWatchlist.loading ? (
+            <p className="mt-4 text-sm text-ink-muted">Carregando radar de dividendos...</p>
+          ) : dividendWatchlist.error ? (
+            <p className="mt-4 text-sm text-ink-muted">{dividendWatchlist.error}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="mt-2 w-full min-w-[560px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-ink-muted">
+                    <th className="py-3 pr-4 font-medium">Ativo</th>
+                    <th className="py-3 pr-4 text-right font-medium">Preço</th>
+                    <th className="py-3 pr-4 text-right font-medium">No dia</th>
+                    <th className="py-3 text-right font-medium">Yield aprox. (12m)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dividendWatchlist.quotes.map((quote) => (
+                    <tr key={quote.ticker} className="border-b border-[var(--color-line)] transition-colors last:border-0 hover:bg-[rgba(255,255,255,0.03)]">
+                      <td className="py-3 pr-4 font-medium text-ink">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-white/5 px-1.5 py-0.5 font-mono text-[11px] tracking-wide text-ink-muted">{quote.ticker}</span>
+                          <span className="text-ink-soft">{quote.name}</span>
+                        </div>
+                      </td>
+                      <td className="tnum py-3 pr-4 text-right font-semibold text-ink">{formatBRL(quote.price)}</td>
+                      <td className="py-3 pr-4 text-right"><TrendBadge value={quote.changePercent / 100} className="ml-auto" /></td>
+                      <td className="tnum py-3 text-right font-semibold text-pos">{quote.dividendYieldApprox !== null ? formatPercent(quote.dividendYieldApprox) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </GlassCard>
+      </BentoGrid>
 
       <InvestmentManageDialog position={managed} onClose={() => setManaged(null)} onChanged={refresh} />
     </div>
