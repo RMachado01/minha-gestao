@@ -38,6 +38,15 @@
   --shadow-elevated: 0 28px 70px -38px rgba(0, 0, 0, .9);
   --ai-accent: #9296e8;
   --ai-surface: rgba(146, 150, 232, .09);
+  --z-nav: 50;
+  --z-advisor: 60;
+  --z-notice: 70;
+  --z-sheet: 80;
+  --z-toast: 90;
+  --z-overlay: 100;
+  --z-modal: 110;
+  --z-celebration: 130;
+  --z-skip: 200;
 }
 
 html {
@@ -151,7 +160,6 @@ html[data-theme="light"] body::before {
 }
 
 .shell-glass {
-  position: relative;
   background: color-mix(in oklab, var(--color-bg-soft) 86%, transparent);
   border: 1px solid var(--color-line);
   box-shadow: 0 1px 0 rgba(255,255,255,.035) inset, var(--shadow-card);

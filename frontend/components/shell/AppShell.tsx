@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { MobileNav } from "./MobileNav";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { FinancialAdvisorWidget } from "@/components/advisor/FinancialAdvisorWidget";
 
@@ -17,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh min-w-0 max-w-full overflow-x-clip">
-      <a href="#main-content" className="fixed left-4 top-3 z-[200] -translate-y-20 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0">Pular para o conteúdo</a>
+      <a href="#main-content" className="fixed left-4 top-3 z-[var(--z-skip)] -translate-y-20 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0">Pular para o conteúdo</a>
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mx-auto w-full max-w-[1440px] px-4 pt-4 sm:px-6 lg:px-10 lg:pt-6">
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </motion.main>
         </AnimatePresence>
       </div>
+      <MobileNav />
       <OnboardingTour />
       <FinancialAdvisorWidget />
     </div>
