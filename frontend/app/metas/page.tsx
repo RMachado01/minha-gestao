@@ -90,6 +90,7 @@ export default function GoalsPage() {
   const [preferredScenario, setPreferredScenario] = useState<ScenarioId>("cdb");
   const [eventType, setEventType] = useState<"contribution" | "withdrawal" | "note">("contribution");
   const [customRate, setCustomRate] = useState(7);
+  const [horizonYears, setHorizonYears] = useState(5);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
@@ -260,7 +261,7 @@ export default function GoalsPage() {
   const projections = selectedGoal ? INVESTMENT_SCENARIOS.map((scenario) => {
     const rate = scenarioRate(selectedGoal, scenario.id, customRate);
     const months = monthsToTarget(selectedGoal.current_amount, selectedGoal.target_amount, selectedMonthly, rate);
-    return { ...scenario, rate, months, inFiveYears: futureValue(selectedGoal.current_amount, selectedMonthly, rate, 60) };
+    return { ...scenario, rate, months, inHorizon: futureValue(selectedGoal.current_amount, selectedMonthly, rate, horizonYears * 12) };
   }) : [];
 
   return (
@@ -358,8 +359,16 @@ export default function GoalsPage() {
         <GlassCard variant="hero" className="col-span-12 xl:col-span-8">
           <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">Projeção de {selectedGoal.name}</p><h2 className="mt-1 text-xl font-semibold text-ink">Compare caminhos para chegar lá</h2></div><div className="rounded-2xl bg-accent/10 px-4 py-2 text-right"><p className="text-xs text-ink-muted">Aporte mensal estimado</p><p className="tnum font-semibold text-ink">{formatBRL(selectedMonthly)}</p></div></div>
           {selectedGoal.contribution_mode === "percentage" && incomeAverage === 0 && <p className="mt-4 rounded-2xl bg-amber-400/10 p-3 text-sm text-warn">Cadastre receitas para calcular o aporte percentual e liberar uma projeção útil.</p>}
-          <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-[var(--color-line)] text-xs uppercase tracking-wide text-ink-muted"><th className="pb-3">Cenário</th><th className="pb-3">Hipótese anual</th><th className="pb-3">Risco</th><th className="pb-3">Prazo estimado</th><th className="pb-3 text-right">Saldo em 5 anos</th></tr></thead><tbody>{projections.map((item) => <tr key={item.id} className="border-b border-[var(--color-line)] last:border-0"><td className="py-4 font-medium text-ink">{item.name}</td><td className="py-4">{item.id === "custom" ? <span className="relative inline-block w-24"><input className="field field-with-suffix min-h-9 py-1.5 tnum" type="number" min="0" max="100" step="0.1" value={customRate} onChange={(event) => setCustomRate(Number(event.target.value))} aria-label="Taxa anual personalizada" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">%</span></span> : <span className="tnum text-ink-soft">{item.rate.toLocaleString("pt-BR")}% a.a.</span>}</td><td className="py-4 text-ink-muted">{item.risk}</td><td className="py-4 text-ink-soft"><Clock3 className="mr-1.5 inline size-4 text-accent" />{formatDuration(item.months)}</td><td className="tnum py-4 text-right font-semibold text-ink">{formatBRL(item.inFiveYears)}</td></tr>)}</tbody></table></div>
-          <p className="mt-4 text-xs leading-relaxed text-ink-muted">Simulação educacional com juros compostos e aportes mensais. Taxas são hipóteses editáveis, não cotações atuais. Valores brutos, sem descontar inflação, impostos, taxas, risco de crédito ou oscilações.</p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <label htmlFor="horizon-years" className="text-sm font-medium text-ink-soft">Simular saldo em</label>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Horizonte de simulação">
+              {[1, 3, 5, 10, 15, 20, 30].map((years) => (
+                <button key={years} type="button" aria-pressed={horizonYears === years} onClick={() => setHorizonYears(years)} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${horizonYears === years ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:text-ink"}`}>{years} {years === 1 ? "ano" : "anos"}</button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-[var(--color-line)] text-xs uppercase tracking-wide text-ink-muted"><th className="pb-3">Cenário</th><th className="pb-3">Hipótese anual</th><th className="pb-3">Risco</th><th className="pb-3">Prazo p/ meta</th><th className="pb-3 text-right">Saldo em {horizonYears} {horizonYears === 1 ? "ano" : "anos"}</th></tr></thead><tbody>{projections.map((item) => <tr key={item.id} className="border-b border-[var(--color-line)] last:border-0"><td className="py-4 font-medium text-ink">{item.name}</td><td className="py-4">{item.id === "custom" ? <span className="relative inline-block w-24"><input className="field field-with-suffix min-h-9 py-1.5 tnum" type="number" min="0" max="100" step="0.1" value={customRate} onChange={(event) => setCustomRate(Number(event.target.value))} aria-label="Taxa anual personalizada" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted">%</span></span> : <span className="tnum text-ink-soft">{item.rate.toLocaleString("pt-BR")}% a.a.</span>}</td><td className="py-4 text-ink-muted">{item.risk}</td><td className="py-4 text-ink-soft"><Clock3 className="mr-1.5 inline size-4 text-accent" />{formatDuration(item.months)}</td><td className="tnum py-4 text-right font-semibold text-ink">{formatBRL(item.inHorizon)}</td></tr>)}</tbody></table></div>
+          <p className="mt-4 text-xs leading-relaxed text-ink-muted">&quot;Prazo p/ meta&quot; é quanto falta para atingir o valor desejado no aporte atual; &quot;Saldo em {horizonYears} {horizonYears === 1 ? "ano" : "anos"}&quot; mostra quanto o dinheiro pode virar nesse período. Simulação educacional com juros compostos e aportes mensais — taxas são hipóteses editáveis, não cotações atuais. Valores brutos, sem descontar inflação, impostos, taxas, risco de crédito ou oscilações.</p>
         </GlassCard>
 
         <GlassCard variant="liquid" className="col-span-12 xl:col-span-4">

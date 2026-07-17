@@ -118,18 +118,25 @@ export async function fetchMarketQuotes(tickers: string[], revalidateSeconds: nu
   ]);
 
   const quotes: MarketQuote[] = [];
+  const writes: Promise<void>[] = [];
   let firstError: string | null = null;
 
   for (const item of settled) {
     if (item.quote) {
       quotes.push(item.quote);
-      void writeCachedQuote(item.quote);
+      writes.push(writeCachedQuote(item.quote));
       continue;
     }
     if (!firstError) firstError = item.error;
     const fallback = cached.get(item.ticker);
     if (fallback) quotes.push(fallback);
   }
+
+  // Aguardar as gravações antes de retornar: em ambiente serverless (Vercel) a
+  // função é encerrada assim que a resposta é enviada, então uma escrita
+  // "fire-and-forget" seria descartada e o cache nunca acumularia — era por
+  // isso que só apareciam sempre os mesmos ~3 tickers.
+  await Promise.allSettled(writes);
 
   if (quotes.length === 0 && firstError) throw new Error(firstError);
 

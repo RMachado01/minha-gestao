@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { MarketQuote } from "./brapi";
 import { DIVIDEND_WATCHLIST_TICKERS } from "./watchlist";
 
-// Plano gratuito da brapi.dev só aceita 1 ativo por requisição — buscar
-// poucos por vez, com um intervalo entre lotes, evita estourar o limite de
-// requisições simultâneas.
-const BATCH_SIZE = 2;
-const BATCH_DELAY_MS = 500;
+// Plano gratuito da brapi.dev só aceita 1 ativo por requisição e limita
+// requisições simultâneas — buscar UM ticker por vez, espaçado, dá a cada
+// ativo uma chance justa (em vez de a corrida deixar sempre os mesmos poucos
+// passarem). O que carrega com sucesso é gravado no cache compartilhado do
+// servidor, então ao longo do uso todos os tickers acabam aparecendo.
+const BATCH_SIZE = 1;
+const BATCH_DELAY_MS = 350;
 
 export interface QuoteState {
   quotes: MarketQuote[];
