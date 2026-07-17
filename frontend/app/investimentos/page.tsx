@@ -351,7 +351,7 @@ export default function InvestimentosPage() {
         )}
 
         <GlassCard variant="liquid" className="col-span-12">
-          <SectionHeader title="Radar de dividendos" subtitle="Ranking por yield aproximado (12 meses) — universo curado da B3" action={<Radar className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
+          <SectionHeader title="Radar de dividendos" subtitle="Ações acompanhadas da B3 · yield aproximado (12m) exibido onde o plano de dados fornece" action={<Radar className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
           {!dividendWatchlist.loading && dividendWatchlist.quotes.length === 0 ? (
             <p className="mt-4 text-sm text-ink-muted">{dividendWatchlist.error}</p>
           ) : (

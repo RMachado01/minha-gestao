@@ -96,23 +96,36 @@ def to_quote(result: dict) -> dict | None:
     }
 
 
-def fetch_quote(ticker: str) -> dict | None:
-    url = f"https://brapi.dev/api/quote/{ticker}"
+def _brapi_fetch(ticker: str, with_dividends: bool):
+    """Retorna (result_dict|None, status_str). result é None quando não veio."""
+    params = {"token": BRAPI_TOKEN}
+    if with_dividends:
+        params["dividends"] = "true"
     try:
         resp = requests.get(
-            url, params={"dividends": "true", "token": BRAPI_TOKEN}, timeout=20
+            f"https://brapi.dev/api/quote/{ticker}", params=params, timeout=20
         )
     except requests.RequestException as exc:
-        print(f"  {ticker}: falha de rede ({exc})")
-        return None
+        return None, f"rede: {exc}"
     if resp.status_code != 200:
-        print(f"  {ticker}: brapi status {resp.status_code} — {resp.text[:160]}")
-        return None
+        return None, f"status {resp.status_code} — {resp.text[:120]}"
     results = (resp.json() or {}).get("results") or []
-    if not results:
-        print(f"  {ticker}: sem resultados")
+    return (results[0] if results else None), "ok"
+
+
+def fetch_quote(ticker: str) -> dict | None:
+    # O plano gratuito da brapi só libera dados de dividendos para alguns
+    # tickers (403 FEATURE_NOT_AVAILABLE nos demais). A cotação em si —
+    # preço, variação, máxima/mínima, volume — funciona para todos. Então:
+    # tenta com dividendos e, se falhar, busca só a cotação. Assim todas as
+    # ações aparecem; o yield vem nas que o plano permite.
+    result, status = _brapi_fetch(ticker, with_dividends=True)
+    if result is None:
+        result, status = _brapi_fetch(ticker, with_dividends=False)
+    if result is None:
+        print(f"  {ticker}: indisponível ({status})")
         return None
-    return to_quote(results[0])
+    return to_quote(result)
 
 
 def supabase_headers() -> dict:
