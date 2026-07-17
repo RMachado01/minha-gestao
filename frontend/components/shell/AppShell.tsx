@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { MobileNav } from "./MobileNav";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { FinancialAdvisorWidget } from "@/components/advisor/FinancialAdvisorWidget";
 
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </motion.main>
         </AnimatePresence>
       </div>
+      <MobileNav />
       <OnboardingTour />
       <FinancialAdvisorWidget />
     </div>

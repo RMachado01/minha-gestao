@@ -1,14 +1,13 @@
 "use client";
 
 import { PeriodFilter } from "./PeriodFilter";
-import { MobileNav } from "./MobileNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserAvatar } from "./UserAvatar";
 import Link from "next/link";
 import { CalendarDays, Plus, ShieldCheck } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 
-/** Barra superior: filtro de período + ações + nav mobile. */
+/** Barra superior: filtro de período e ações contextuais. */
 export function TopBar() {
   const currentMonth = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
@@ -45,7 +44,6 @@ export function TopBar() {
           <SignOutButton compact className="lg:hidden" />
         </div>
       </div>
-      <MobileNav />
     </header>
   );
 }

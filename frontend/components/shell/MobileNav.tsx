@@ -42,17 +42,26 @@ export function MobileNav() {
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   return (
     <>
-      <nav className="shell-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.25rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
+      <nav className="shell-glass fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] left-1/2 z-50 grid w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 grid-cols-5 rounded-[1.25rem] p-1.5 lg:hidden" aria-label="Navegação principal">
         {ITEMS.map((item) => {
           const { href, label, icon: Icon } = item;
           const primary = "primary" in item && item.primary;
           const tour = "tour" in item ? item.tour : undefined;
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return <Link key={href} href={href} data-tour-mobile={tour} className={cn("relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium transition-colors", primary && "-mt-5 min-h-14 rounded-full bg-accent text-white shadow-[0_14px_32px_-16px_var(--color-accent)]", active ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_13%,transparent)] text-ink" : "text-ink-soft hover:text-ink")}><Icon className={cn("h-4 w-4", primary ? "size-5 text-white" : active ? "text-accent" : "text-ink-muted")} />{label}</Link>;
+          return <Link key={href} href={href} data-tour-mobile={tour} aria-current={active ? "page" : undefined} className={cn("relative flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium transition-[color,background-color,opacity] active:opacity-75", primary && "-mt-4 min-h-16 rounded-2xl bg-accent text-white shadow-[0_14px_32px_-16px_var(--color-accent)]", active ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_13%,transparent)] text-ink" : "text-ink-soft hover:text-ink")}><Icon className={cn("h-4 w-4", primary ? "size-5 text-white" : active ? "text-accent" : "text-ink-muted")} />{label}</Link>;
         })}
-        <button type="button" data-tour-mobile="more" onClick={() => setOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium text-ink-soft transition hover:text-ink" aria-label="Abrir todas as funções"><Menu className="size-4 text-ink-muted" />Mais</button>
+        <button type="button" data-tour-mobile="more" onClick={() => setOpen(true)} className="relative flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium text-ink-soft transition-[color,opacity] active:opacity-75 hover:text-ink" aria-label="Abrir todas as funções" aria-expanded={open}><Menu className="size-4 text-ink-muted" />Mais</button>
       </nav>
 
       <AnimatePresence>

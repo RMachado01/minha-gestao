@@ -160,7 +160,6 @@ html[data-theme="light"] body::before {
 }
 
 .shell-glass {
-  position: relative;
   background: color-mix(in oklab, var(--color-bg-soft) 86%, transparent);
   border: 1px solid var(--color-line);
   box-shadow: 0 1px 0 rgba(255,255,255,.035) inset, var(--shadow-card);
