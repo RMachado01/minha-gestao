@@ -157,7 +157,7 @@ export function FinancialAdvisorWidget() {
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[60] flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--ai-accent)_28%,var(--color-line))] bg-[var(--color-surface-2)] px-4 text-sm font-semibold text-ink shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,var(--ai-accent))] lg:bottom-6 lg:right-6"
+        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--z-advisor)] flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--ai-accent)_28%,var(--color-line))] bg-[var(--color-surface-2)] px-4 text-sm font-semibold text-ink shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,var(--ai-accent))] lg:bottom-6 lg:right-6"
         aria-label={open ? "Fechar inteligência da conta" : "Abrir inteligência da conta"}
         aria-expanded={open}
         aria-controls="financial-advisor-dialog"
@@ -175,7 +175,7 @@ export function FinancialAdvisorWidget() {
             role="dialog"
             aria-label="Inteligência da conta"
             data-lenis-prevent
-            className="ai-surface fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[59] flex max-h-[calc(100dvh-12rem-env(safe-area-inset-bottom))] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[var(--radius-card-lg)] shadow-[var(--shadow-elevated)] outline-none sm:left-auto sm:w-[440px] lg:bottom-20 lg:right-6"
+            className="ai-surface fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[var(--z-advisor)] flex max-h-[calc(100dvh-12rem-env(safe-area-inset-bottom))] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[var(--radius-card-lg)] shadow-[var(--shadow-elevated)] outline-none sm:left-auto sm:w-[440px] lg:bottom-20 lg:right-6"
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: .99 }}

@@ -138,8 +138,8 @@ export default function VisaoGeralPage() {
           icon={Wallet}
           title={error || "Sua conta está pronta"}
           description={error ? "Recarregue a página para tentar novamente." : "Você ainda não possui movimentações. Faça o primeiro lançamento para começar a formar seu saldo, gráficos e indicadores."}
-          actionLabel="Criar primeiro lançamento"
-          actionHref="/lancamentos"
+          actionLabel={error ? undefined : "Criar primeiro lançamento"}
+          actionHref={error ? undefined : "/lancamentos"}
         />
       </div>
     );

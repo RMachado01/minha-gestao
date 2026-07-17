@@ -1,81 +1,59 @@
-# Contrato de Design — Minha Gestão (leia antes de codar uma tela)
+# Contrato de Design — Minha Gestão
 
-> Este protótipo usa **Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts 3**.
-> A fundação (shell, design system, persistência Supabase e gráficos) está pronta.
-> As páginas de produto usam dados da conta autenticada; `lib/mock` permanece apenas
-> como legado visual e fonte temporária de tipos, nunca como dados em produção.
+> Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts 3. A especificação visual completa está em [`design-system/minha-gest-o/MASTER.md`](../design-system/minha-gest-o/MASTER.md).
 
-## Regras da stack (importante — mais novo que o comum)
+## Direção: Quiet Intelligence
 
-- **Tailwind v4**: config é em CSS (`app/globals.css` via `@theme`). Não existe `tailwind.config.js`. Use utilitários normais.
-- **Sua página DEVE começar com `"use client";`** — ela usa `usePeriodo()` (hook de URL) e gráficos Recharts (client-only).
-- Default export de um componente React. Sem `async`.
-- Ícones: `lucide-react`.
+A interface é uma mesa de decisão financeira calma, precisa e humana. Ela deve responder primeiro **o que mudou** e **qual ação faz sentido**; gráficos e tabelas sustentam essa resposta.
 
-## Cores semânticas (obrigatório)
+- Dados reais e estados vazios honestos. Nunca usar números fictícios em sessão autenticada.
+- Quatro níveis: fundo, cartão sólido, destaque elevado e vidro apenas em navegação, modais e sheets.
+- Verde representa marca/ação ou resultado positivo; vermelho é negativo; lilás identifica IA e projeções.
+- Geist na interface; Newsreader apenas em títulos/briefings; Geist Mono apenas para ticker, código ou identificador.
+- Movimento de 150–320 ms com causa e efeito. Sem shimmer, tilt, spotlight ou blobs animados.
 
-- **Verde** (`text-pos`, `CHART.pos`) = positivo / entrada / lucro.
-- **Vermelho** (`text-neg`, `CHART.neg`) = negativo / saída / prejuízo.
-- Neutro/acento (`text-accent`, `CHART.accent/accent2/accent3`) = informativo, **não** decorativo.
-- Valores em dinheiro: sempre `formatBRL(x)` e className `tnum` (números tabulares).
+## Regras da stack
 
-## Tipo de gráfico por tipo de dado
+- Tailwind v4 é configurado em `app/globals.css` via `@theme`; não existe `tailwind.config.js`.
+- Use Client Components somente onde há hooks, eventos ou bibliotecas client-only. Páginas públicas podem ser Server Components.
+- Ícones são sempre `lucide-react`; nada de emoji estrutural.
+- Valores monetários usam `formatBRL()` e `tnum`.
+- Consultas autenticadas usam hooks de `@/lib/supabase` ou `createClient()`; não importar valores de `@/lib/mock`.
 
-- **Linha/área** (`TrendLineChart`) → séries temporais / tendência.
-- **Barra** (`CompareBarChart`) → comparação entre categorias discretas.
-- **Donut** (`CompositionDonut`) → composição de um todo.
-- Tabela → detalhamento (use HTML semântico `<table>`).
-
-## Filtro de período (global)
+## Superfícies e componentes
 
 ```tsx
-import { usePeriodo } from "@/lib/usePeriodo";
-const { modo } = usePeriodo(); // "mensal" | "anual"
-```
-Escolha o dataset conforme `modo` (ex: `getFluxo(modo)`, `getUber(modo)`).
-
-## Primitivos disponíveis
-
-```tsx
-import { BentoGrid } from "@/components/ui/BentoGrid";       // grid 12 col, empilha no mobile
-import { GlassCard } from "@/components/ui/GlassCard";        // props: strong?, interactive?, className
-import { KpiCard } from "@/components/ui/KpiCard";            // label, value(str), trend?(fração), tone?, invertTrend?, hint?, icon?
-import { TrendBadge } from "@/components/ui/TrendBadge";      // value(fração), invert? (subir=ruim)
-import { SectionHeader } from "@/components/ui/SectionHeader";// title, subtitle?, action?
-
-import { TrendLineChart } from "@/components/charts/TrendLineChart"; // data, xKey, series:[{key,label,color,area?}], minimal?, showLegend?
-import { CompareBarChart } from "@/components/charts/CompareBarChart"; // data, xKey, series:[{key,label,color}], stacked?
-import { CompositionDonut } from "@/components/charts/CompositionDonut"; // data:[{name,value,color?}], centerLabel?, centerValue?
-import { CHART, CATEGORICAL } from "@/components/charts/chartTheme";
-
-import { formatBRL, formatBRLCompact, formatPercent, variacao } from "@/lib/format";
+<GlassCard variant="default" />  // cartão sólido de dados
+<GlassCard variant="hero" />     // destaque elevado
+<GlassCard interactive />        // somente se o card inteiro for clicável
 ```
 
-## Layout bento — como usar
+O nome `GlassCard` permanece por compatibilidade; `default` e `hero` não aplicam blur. `liquid-glass`, usado por telas legadas, também foi remapeado para superfície sólida. `shell-glass`, `ios-glass` e sheets são as exceções.
 
-`BentoGrid` é `grid-cols-12` no desktop. Cada filho controla o tamanho:
-```tsx
-<BentoGrid>
-  <GlassCard className="col-span-12 lg:col-span-8"> ...card grande (hero)... </GlassCard>
-  <GlassCard className="col-span-12 sm:col-span-3 lg:col-span-4"> ...KPI... </GlassCard>
-</BentoGrid>
-```
-Varie tamanhos (não tudo uniforme) — hierarquia por escala. Card principal (número grande do topo) usa `strong`.
+Primitivos principais:
 
-## Qualidade (anti-template) — checklist
+- `PageHeader`: título editorial e descrição.
+- `BentoGrid`: 12 colunas no desktop, empilhamento no mobile.
+- `KpiCard`: indicador de apoio, não hero.
+- `DailyBriefing`: interpretação contextual do dashboard.
+- `FinancialAdvisorWidget`: Inteligência global com origem/período dos dados.
+- `MoneyInput`: máscara BRL com centavos automáticos.
+- `SelectField`: select com affordance consistente.
 
-- [ ] `"use client";` no topo.
-- [ ] Número grande em destaque no topo, tendência (TrendBadge) logo ao lado/abaixo.
-- [ ] Bento com tamanhos variados (não um grid uniforme de cards iguais).
-- [ ] Cores semânticas corretas (verde/vermelho).
-- [ ] Hover/focus desenhados em elementos interativos (`GlassCard interactive`, botões).
-- [ ] Responsivo: em telas ≥ um card por linha só no mobile (`col-span-12`), multi-coluna no `lg`.
-- [ ] HTML semântico (`<section>`, `<table>`, `<h2>`), sem `div` soup.
-- [ ] Todo dinheiro com `formatBRL` + `tnum`.
-- [ ] Nada de gráfico 3D/decorativo. Sem `console.log`.
+## Gráficos
 
-## Dados
+- Tendência: `TrendLineChart`; comparação: `CompareBarChart`; composição: `CompositionDonut`.
+- Histórico é linha sólida. Projeção usa `projection: true`, cor lilás e linha tracejada.
+- Grade discreta, valores localizados, tooltip e `aria-label`/resumo textual.
+- Donut não deve exceder cinco categorias; acima disso, prefira barras.
 
-Use os hooks em `@/lib/supabase` ou consultas autenticadas com `createClient()`.
-Não importe valores de `@/lib/mock` em telas de produção. Tipos ainda existentes
-nesse diretório devem ser importados com `import type` até serem movidos para contratos próprios.
+## Checklist de entrega
+
+- [ ] Um CTA primário por contexto; botões sem gradiente decorativo.
+- [ ] Alvos interativos com pelo menos 44×44 px e foco visível.
+- [ ] Labels de formulário visíveis, loading e erro com caminho de recuperação.
+- [ ] Claro/escuro testados de forma independente.
+- [ ] 375, 768, 1024 e 1440 px sem overflow ou conteúdo atrás de elementos fixos.
+- [ ] `prefers-reduced-motion` e `prefers-reduced-transparency` respeitados.
+- [ ] HTML semântico; gráficos possuem alternativa textual/tabela quando são essenciais.
+- [ ] Lint, TypeScript, testes, build e verificação visual concluídos.
