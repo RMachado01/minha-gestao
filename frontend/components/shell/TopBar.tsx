@@ -5,7 +5,7 @@ import { MobileNav } from "./MobileNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserAvatar } from "./UserAvatar";
 import Link from "next/link";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, ShieldCheck } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /** Barra superior: filtro de período + ações + nav mobile. */
@@ -16,11 +16,11 @@ export function TopBar() {
   }).format(new Date());
 
   return (
-    <header className="flex flex-col gap-4 pb-4">
+    <header className="flex flex-col gap-3 border-b border-[var(--color-line)] pb-4">
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:justify-between sm:gap-3">
-        <div className="hidden items-center gap-2 text-sm text-ink-soft sm:flex">
-          <CalendarDays className="size-4 text-accent" />
-          <span className="capitalize">{currentMonth}</span>
+        <div className="hidden items-center gap-4 text-sm text-ink-soft sm:flex">
+          <span className="flex items-center gap-2 capitalize"><CalendarDays className="size-4 text-accent" />{currentMonth}</span>
+          <span className="hidden items-center gap-1.5 text-xs text-ink-muted xl:flex"><ShieldCheck className="size-3.5" />Seus dados, sua conta</span>
         </div>
         <div className="flex min-w-0 max-w-full items-center gap-1.5 sm:gap-2">
           <Link
@@ -28,7 +28,7 @@ export function TopBar() {
             data-tour-desktop="new-launch"
             className="btn-primary topbar-new-launch min-h-11 px-4"
           >
-            <span className="grid size-6 place-items-center rounded-lg bg-white/15">
+            <span className="grid size-6 place-items-center rounded-[.45rem] bg-white/15">
               <Plus className="size-4" />
             </span>
             Novo lançamento

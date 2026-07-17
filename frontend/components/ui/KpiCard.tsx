@@ -57,7 +57,7 @@ const sparkColor = {
   neutral: CHART.accent2,
 } as const;
 
-/** KPI card with liquid glass, accent stripe, glow icon chip and optional count-up + sparkline. */
+/** Compact decision KPI with restrained semantic color and optional trend. */
 export function KpiCard({
   label,
   value,
@@ -76,21 +76,21 @@ export function KpiCard({
 }: KpiCardProps) {
   return (
     <GlassCard
-      variant="liquid"
-      interactive={interactive ?? true}
-      className={cn("flex flex-col gap-3", stripeClass[tone], className)}
+      variant="default"
+      interactive={interactive ?? false}
+      className={cn("flex flex-col gap-3 pl-7", stripeClass[tone], className)}
       {...cardProps}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-ink-soft">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-[.09em] text-ink-muted">{label}</span>
         {icon && (
-          <span className={cn("relative grid size-9 place-items-center rounded-xl", chipToneClass[tone])}>
+          <span className={cn("relative grid size-8 place-items-center rounded-[.65rem]", chipToneClass[tone])}>
             {icon}
           </span>
         )}
       </div>
       <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
-        <span className={cn("tnum min-w-0 shrink break-words text-2xl font-semibold", toneClass[tone])}>
+        <span className={cn("tnum min-w-0 shrink break-words text-[1.65rem] font-semibold tracking-[-.035em]", toneClass[tone])}>
           {numericValue !== undefined && formatValue ? (
             <AnimatedValue target={numericValue} format={formatValue} decimals={decimals} />
           ) : (

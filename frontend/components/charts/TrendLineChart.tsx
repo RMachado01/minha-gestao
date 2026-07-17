@@ -21,6 +21,8 @@ export interface Serie {
   color: string;
   /** Preenche a área sob a linha (bom para série principal / mini-chart). */
   area?: boolean;
+  /** Projeções são lilás/tracejadas para não parecerem dado realizado. */
+  projection?: boolean;
 }
 
 interface TrendLineChartProps {
@@ -34,6 +36,7 @@ interface TrendLineChartProps {
   /** Alias de `minimal` para consistência com o prop `dense` dos outros gráficos. */
   dense?: boolean;
   showLegend?: boolean;
+  ariaLabel?: string;
 }
 
 /** Linha/área para séries temporais e tendência. */
@@ -45,15 +48,17 @@ export function TrendLineChart({
   minimal = false,
   dense = false,
   showLegend = false,
+  ariaLabel,
 }: TrendLineChartProps) {
   const isMinimal = minimal || dense;
   return (
+    <div role="img" aria-label={ariaLabel ?? `Gráfico temporal de ${series.map((item) => item.label).join(", ")}, com ${data.length} períodos`}>
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: isMinimal ? 0 : 4, bottom: 0 }}>
         <defs>
           {series.map((s) => (
             <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity={0.35} />
+              <stop offset="0%" stopColor={s.color} stopOpacity={0.2} />
               <stop offset="100%" stopColor={s.color} stopOpacity={0} />
             </linearGradient>
           ))}
@@ -78,6 +83,7 @@ export function TrendLineChart({
               name={s.label}
               stroke={s.color}
               strokeWidth={2.5}
+              strokeDasharray={s.projection ? "7 6" : undefined}
               fill={`url(#grad-${s.key})`}
               dot={false}
               activeDot={{ r: 4 }}
@@ -90,6 +96,7 @@ export function TrendLineChart({
               name={s.label}
               stroke={s.color}
               strokeWidth={2.5}
+              strokeDasharray={s.projection ? "7 6" : undefined}
               fill="none"
               dot={false}
               activeDot={{ r: 4 }}
@@ -98,5 +105,6 @@ export function TrendLineChart({
         )}
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }

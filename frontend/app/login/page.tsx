@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LockKeyhole, Wallet } from "lucide-react";
+import { Landmark, LockKeyhole } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default async function LoginPage({
@@ -11,18 +11,18 @@ export default async function LoginPage({
 
   return (
     <main className="relative grid min-h-dvh min-w-0 max-w-full place-items-center overflow-hidden px-3 py-6 sm:px-4 sm:py-10">
-      {/* Animated background orbs — green brand */}
+      {/* Quiet ambient depth — static to avoid decorative motion. */}
       <div
         aria-hidden
-        className="login-float absolute left-[5%] top-[10%] size-80 rounded-full bg-[#006b3f]/20 blur-[80px]"
+        className="login-float absolute left-[5%] top-[10%] size-80 rounded-full bg-accent/10 blur-[90px]"
       />
       <div
         aria-hidden
-        className="login-float-delayed absolute bottom-[8%] right-[8%] size-96 rounded-full bg-[#00a86b]/15 blur-[100px]"
+        className="login-float-delayed absolute bottom-[8%] right-[8%] size-96 rounded-full bg-[var(--ai-accent)]/10 blur-[110px]"
       />
       <div
         aria-hidden
-        className="login-pulse absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-[#006b3f]/10 blur-[120px]"
+        className="login-pulse absolute left-1/2 top-1/2 size-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/5 blur-[120px]"
       />
 
       {/* Card */}
@@ -32,18 +32,18 @@ export default async function LoginPage({
       >
         {/* Brand header */}
         <div className="mb-8 flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-[#006b3f]/20 text-[#00a86b]">
-            <Wallet className="size-5" />
+          <span className="grid size-11 place-items-center rounded-xl bg-accent text-white">
+            <Landmark className="size-5" />
           </span>
           <div>
             <p className="font-semibold text-ink">Minha Gestão</p>
-            <p className="text-xs text-ink-muted">Sua vida financeira, clara.</p>
+            <p className="text-xs text-ink-muted">Clareza para decidir melhor.</p>
           </div>
         </div>
 
         <h1
           id="login-title"
-          className="text-3xl font-semibold tracking-tight text-ink"
+          className="login-title text-[2.25rem] font-medium leading-none tracking-[-.035em] text-ink"
         >
           Bem-vindo de volta
         </h1>

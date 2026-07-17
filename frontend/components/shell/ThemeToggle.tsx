@@ -20,13 +20,13 @@ export function ThemeToggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
-    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", next === "light" ? "#f8fafc" : "#06080f");
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", next === "light" ? "#f4f5f0" : "#07100d");
     localStorage.setItem("mg-theme", next);
     window.dispatchEvent(new Event("mg-theme-change"));
   }
 
   return (
-    <button type="button" onClick={toggle} className="ios-glass grid size-11 place-items-center rounded-2xl text-ink-soft transition hover:scale-[1.03] hover:text-ink" aria-label={`Ativar modo ${theme === "dark" ? "claro" : "escuro"}`} title={`Ativar modo ${theme === "dark" ? "claro" : "escuro"}`}>
+    <button type="button" onClick={toggle} className="ios-glass grid size-11 place-items-center rounded-xl text-ink-soft transition-colors hover:text-ink" aria-label={`Ativar modo ${theme === "dark" ? "claro" : "escuro"}`} title={`Ativar modo ${theme === "dark" ? "claro" : "escuro"}`}>
       {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </button>
   );

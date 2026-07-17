@@ -12,9 +12,9 @@ export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
   return (
     <div className="mb-4 flex items-start justify-between gap-3">
       <div>
-        <h3 className="text-base font-semibold text-ink">{title}</h3>
+        <h3 className="text-[.95rem] font-semibold tracking-[-.01em] text-ink">{title}</h3>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>
+          <p className="mt-1 text-xs leading-5 text-ink-muted">{subtitle}</p>
         )}
       </div>
       {action}

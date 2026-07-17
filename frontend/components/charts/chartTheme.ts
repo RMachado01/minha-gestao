@@ -6,6 +6,7 @@ export const CHART = {
   accent: "var(--color-accent)",
   accent2: "var(--color-accent-2)",
   accent3: "var(--color-accent-3)",
+  projection: "var(--ai-accent)",
   grid: "var(--color-chart-grid)",
   axis: "var(--color-ink-muted)",
   ink: "var(--color-ink)",
@@ -14,13 +15,13 @@ export const CHART = {
 /** Sequência de cores para categorias (donut/barras multi-série). */
 export const CATEGORICAL = [
   CHART.accent,
-  CHART.accent2,
   CHART.pos,
+  CHART.projection,
   CHART.accent3,
   CHART.warn,
   CHART.neg,
-  "#38bdf8",
-  "#f472b6",
+  "#5d8f7c",
+  "#9c86a9",
 ] as const;
 
 export const AXIS_PROPS = {
