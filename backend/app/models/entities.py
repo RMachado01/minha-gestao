@@ -4,9 +4,10 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin, UUIDMixin
+from app.db.base import Base, CreatedAtMixin, TimestampMixin, UUIDMixin
 
 
 class TransactionType(str, enum.Enum):
@@ -24,6 +25,7 @@ class RecurrenceType(str, enum.Enum):
     subscription = "subscription"
     installment = "installment"
     fixed_bill = "fixed_bill"
+    income = "income"
 
 
 class InvestmentType(str, enum.Enum):
@@ -59,25 +61,39 @@ class Powertrain(str, enum.Enum):
     electric = "electric"
 
 
-class User(UUIDMixin, TimestampMixin, Base):
+class AuthUser(Base):
+    """Minimal mapping for identities managed by Supabase Auth."""
+
     __tablename__ = "users"
-    name: Mapped[str] = mapped_column(String(120))
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255))
+    __table_args__ = {"schema": "auth"}
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
 
 
-class Category(UUIDMixin, TimestampMixin, Base):
+class Profile(TimestampMixin, Base):
+    __tablename__ = "profiles"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    full_name: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str | None] = mapped_column(String(30))
+    state_code: Mapped[str | None] = mapped_column(String(2))
+    currency: Mapped[str] = mapped_column(String(3), default="BRL")
+
+
+class Category(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "categories"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     name: Mapped[str] = mapped_column(String(80))
     type: Mapped[CategoryType] = mapped_column(Enum(CategoryType))
     color: Mapped[str | None] = mapped_column(String(20))
     icon: Mapped[str | None] = mapped_column(String(40))
 
 
-class RecurrenceRule(UUIDMixin, TimestampMixin, Base):
+class RecurrenceRule(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "recurrence_rules"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     description: Mapped[str] = mapped_column(String(240))
     type: Mapped[RecurrenceType] = mapped_column(Enum(RecurrenceType))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
@@ -90,10 +106,10 @@ class RecurrenceRule(UUIDMixin, TimestampMixin, Base):
     category_id: Mapped[UUID | None] = mapped_column(ForeignKey("categories.id"))
 
 
-class Transaction(UUIDMixin, TimestampMixin, Base):
+class Transaction(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "transactions"
     __table_args__ = (UniqueConstraint("user_id", "idempotency_key"),)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     credit_card_id: Mapped[UUID | None] = mapped_column(ForeignKey("credit_cards.id"), index=True)
     category_id: Mapped[UUID | None] = mapped_column(ForeignKey("categories.id"))
     recurrence_id: Mapped[UUID | None] = mapped_column(ForeignKey("recurrence_rules.id"))
@@ -102,6 +118,7 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
     occurred_on: Mapped[date] = mapped_column(Date, index=True)
     description: Mapped[str] = mapped_column(String(240))
     category: Mapped[str] = mapped_column(String(80))
+    payment_method: Mapped[str | None] = mapped_column(String(20))
     origin: Mapped[str | None] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(10), default="pending")
     benefit_kind: Mapped[str | None] = mapped_column(String(20))
@@ -112,9 +129,9 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(80))
 
 
-class Vehicle(UUIDMixin, TimestampMixin, Base):
+class Vehicle(UUIDMixin, Base):
     __tablename__ = "vehicles"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     brand: Mapped[str] = mapped_column(String(80))
     model: Mapped[str] = mapped_column(String(120))
     year: Mapped[int] = mapped_column(Integer)
@@ -123,24 +140,12 @@ class Vehicle(UUIDMixin, TimestampMixin, Base):
     efficiency: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    energy_entries: Mapped[list["VehicleEnergyEntry"]] = relationship(back_populates="vehicle")
 
 
-class VehicleEnergyEntry(UUIDMixin, TimestampMixin, Base):
-    __tablename__ = "vehicle_energy_entries"
-    vehicle_id: Mapped[UUID] = mapped_column(ForeignKey("vehicles.id"), index=True)
-    occurred_on: Mapped[date] = mapped_column(Date, index=True)
-    consumed_kwh: Mapped[Decimal] = mapped_column(Numeric(12, 3))
-    tariff_per_kwh: Mapped[Decimal] = mapped_column(Numeric(12, 4))
-    total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2))
-    distributor: Mapped[str | None] = mapped_column(String(120))
-    vehicle: Mapped[Vehicle] = relationship(back_populates="energy_entries")
-
-
-class UberDailyEntry(UUIDMixin, TimestampMixin, Base):
+class UberDailyEntry(UUIDMixin, Base):
     __tablename__ = "uber_daily_entries"
-    __table_args__ = (UniqueConstraint("user_id", "occurred_on", "idempotency_key"),)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    __table_args__ = (UniqueConstraint("user_id", "idempotency_key"),)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     vehicle_id: Mapped[UUID | None] = mapped_column(ForeignKey("vehicles.id"), index=True)
     occurred_on: Mapped[date] = mapped_column(Date, index=True)
     kilometers: Mapped[Decimal] = mapped_column(Numeric(12, 2))
@@ -150,11 +155,16 @@ class UberDailyEntry(UUIDMixin, TimestampMixin, Base):
     other_costs: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     net_profit: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     idempotency_key: Mapped[str] = mapped_column(String(80))
+    # The Supabase migration deliberately uses text + CHECK, not a native PG enum.
+    entry_kind: Mapped[str] = mapped_column(String(10), default="uber")
+    hours_worked: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    odometer_start: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    odometer_end: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
 
-class CreditCard(UUIDMixin, TimestampMixin, Base):
+class CreditCard(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "credit_cards"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     nickname: Mapped[str] = mapped_column(String(80))
     brand: Mapped[str] = mapped_column(String(40))
     total_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2))
@@ -164,7 +174,7 @@ class CreditCard(UUIDMixin, TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class CreditCardBill(UUIDMixin, TimestampMixin, Base):
+class CreditCardBill(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "credit_card_bills"
     __table_args__ = (UniqueConstraint("credit_card_id", "reference_month"),)
     credit_card_id: Mapped[UUID] = mapped_column(ForeignKey("credit_cards.id"), index=True)
@@ -173,9 +183,9 @@ class CreditCardBill(UUIDMixin, TimestampMixin, Base):
     status: Mapped[BillStatus] = mapped_column(Enum(BillStatus), default=BillStatus.open)
 
 
-class Investment(UUIDMixin, TimestampMixin, Base):
+class Investment(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "investments"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     name: Mapped[str] = mapped_column(String(120))
     type: Mapped[InvestmentType] = mapped_column(Enum(InvestmentType))
     invested_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
@@ -184,7 +194,7 @@ class Investment(UUIDMixin, TimestampMixin, Base):
     snapshots: Mapped[list["InvestmentSnapshot"]] = relationship(back_populates="investment")
 
 
-class InvestmentSnapshot(UUIDMixin, TimestampMixin, Base):
+class InvestmentSnapshot(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "investment_snapshots"
     investment_id: Mapped[UUID] = mapped_column(ForeignKey("investments.id"), index=True)
     snapshot_date: Mapped[date] = mapped_column(Date)
@@ -194,7 +204,7 @@ class InvestmentSnapshot(UUIDMixin, TimestampMixin, Base):
 
 class FinancialGoal(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "financial_goals"
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     name: Mapped[str] = mapped_column(String(80))
     goal_type: Mapped[str] = mapped_column(String(20))
     description: Mapped[str | None] = mapped_column(String(600))
@@ -209,10 +219,10 @@ class FinancialGoal(UUIDMixin, TimestampMixin, Base):
     events: Mapped[list["GoalEvent"]] = relationship(back_populates="goal")
 
 
-class GoalEvent(UUIDMixin, Base):
+class GoalEvent(UUIDMixin, CreatedAtMixin, Base):
     __tablename__ = "goal_events"
     goal_id: Mapped[UUID] = mapped_column(ForeignKey("financial_goals.id"), index=True)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("auth.users.id"), index=True)
     event_type: Mapped[str] = mapped_column(String(20))
     amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     description: Mapped[str | None] = mapped_column(String(400))

@@ -5,12 +5,12 @@ import { LoginForm } from "@/components/auth/LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ confirmed?: string; error?: string; reset?: string }>;
+  searchParams: Promise<{ confirmed?: string; error?: string; reset?: string; account?: string }>;
 }) {
   const params = await searchParams;
 
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-hidden px-4 py-10">
+    <main className="relative grid min-h-dvh min-w-0 max-w-full place-items-center overflow-hidden px-3 py-6 sm:px-4 sm:py-10">
       {/* Animated background orbs — green brand */}
       <div
         aria-hidden
@@ -27,7 +27,7 @@ export default async function LoginPage({
 
       {/* Card */}
       <section
-        className="login-card-enter ios-glass relative w-full max-w-md overflow-hidden rounded-[2rem] p-7 sm:p-9"
+        className="login-card-enter ios-glass relative w-full min-w-0 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[1.5rem] p-5 sm:max-w-md sm:rounded-[2rem] sm:p-9"
         aria-labelledby="login-title"
       >
         {/* Brand header */}
@@ -66,6 +66,12 @@ export default async function LoginPage({
         {params.reset === "1" && (
           <p role="status" className="mt-6 rounded-2xl bg-emerald-400/10 p-4 text-sm text-pos">
             Senha atualizada com sucesso. Entre com sua nova senha.
+          </p>
+        )}
+
+        {params.account === "deleted" && (
+          <p role="status" className="mt-6 rounded-2xl bg-emerald-400/10 p-4 text-sm text-pos">
+            Conta e dados removidos com sucesso.
           </p>
         )}
 

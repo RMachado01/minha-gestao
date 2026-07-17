@@ -1,9 +1,9 @@
 # Contrato de Design — Minha Gestão (leia antes de codar uma tela)
 
 > Este protótipo usa **Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts 3**.
-> A fundação (shell, design system, mock, gráficos) **já está pronta**. Você só escreve
-> **UMA página**. **Não edite** arquivos compartilhados (`app/globals.css`, `app/layout.tsx`,
-> `components/**`, `lib/**`) — apenas o seu `page.tsx`.
+> A fundação (shell, design system, persistência Supabase e gráficos) está pronta.
+> As páginas de produto usam dados da conta autenticada; `lib/mock` permanece apenas
+> como legado visual e fonte temporária de tipos, nunca como dados em produção.
 
 ## Regras da stack (importante — mais novo que o comum)
 
@@ -74,7 +74,8 @@ Varie tamanhos (não tudo uniforme) — hierarquia por escala. Card principal (n
 - [ ] Todo dinheiro com `formatBRL` + `tnum`.
 - [ ] Nada de gráfico 3D/decorativo. Sem `console.log`.
 
-## Mock data (importe do seu domínio)
+## Dados
 
-Tudo em `@/lib/mock` (re-exportado). Cada tela tem seu módulo:
-`overview.ts`, `fluxo.ts`, `gastos.ts`, `investimentos.ts`, `cartoes.ts`, `uber.ts`.
+Use os hooks em `@/lib/supabase` ou consultas autenticadas com `createClient()`.
+Não importe valores de `@/lib/mock` em telas de produção. Tipos ainda existentes
+nesse diretório devem ser importados com `import type` até serem movidos para contratos próprios.

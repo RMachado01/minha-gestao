@@ -48,7 +48,7 @@ function useCachedQuotes(tickers: string[], rankByYield: boolean): QuoteState {
       const { data, error } = await supabase
         .from("market_quote_cache")
         .select("ticker,data,updated_at")
-        .in("ticker", tickers);
+        .in("ticker", key.split(",").filter(Boolean));
 
       if (cancelled) return;
       if (error) {

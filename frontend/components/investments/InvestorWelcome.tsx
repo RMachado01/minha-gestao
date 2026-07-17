@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { LineChart } from "lucide-react";
-import { Sparkline } from "@/components/charts/Sparkline";
 
 const SESSION_KEY = "mg-investor-welcomed";
-const ATMOSPHERE_SERIES = [3, 5, 4, 7, 6, 9, 8, 12, 11, 15, 14, 18];
 
 /**
- * Splash de boas-vindas exibido uma vez por sessão ao entrar em Investimentos.
- * Puramente decorativo — não bloqueia nem atrasa o carregamento dos dados reais,
- * que seguem sendo buscados por baixo enquanto a animação roda.
+ * Boas-vindas compactas exibidas uma vez por sessão. Não bloqueiam a tela,
+ * a navegação ou a leitura dos dados reais da carteira.
  */
 export function InvestorWelcome() {
   const reduceMotion = useReducedMotion();
@@ -24,7 +21,7 @@ export function InvestorWelcome() {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     void Promise.resolve().then(() => {
       setVisible(true);
-      timeout = setTimeout(() => setVisible(false), reduceMotion ? 200 : 1900);
+      timeout = setTimeout(() => setVisible(false), reduceMotion ? 100 : 1100);
     });
     return () => clearTimeout(timeout);
   }, [reduceMotion]);
@@ -34,49 +31,18 @@ export function InvestorWelcome() {
       {visible && (
         <motion.div
           aria-hidden
-          className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-[#060808]"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="ios-glass pointer-events-none fixed inset-x-4 top-4 z-[70] mx-auto flex max-w-sm items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl sm:left-auto sm:right-5 sm:mx-0"
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: reduceMotion ? 0.01 : 0.28, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="login-pulse absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[700px] rounded-full bg-[#006b3f]/15 blur-[130px]" />
-
-          <div className="relative flex flex-col items-center gap-4 px-6 text-center">
-            <motion.span
-              className="grid size-16 place-items-center rounded-3xl bg-[#006b3f]/20 text-[#00a86b]"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.6, rotate: -10 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <LineChart className="size-7" />
-            </motion.span>
-
-            <motion.h1
-              className="text-3xl font-semibold tracking-tight text-white sm:text-4xl"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            >
-              Bem-vindo, Investidor
-            </motion.h1>
-
-            <motion.p
-              className="text-sm text-white/60"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            >
-              Sua carteira, atualizada.
-            </motion.p>
-
-            <motion.div
-              className="mt-2 w-48"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.32 }}
-            >
-              <Sparkline data={ATMOSPHERE_SERIES} color="#00a86b" height={40} />
-            </motion.div>
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#006b3f]/20 text-[#00a86b]">
+            <LineChart className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-ink">Carteira pronta</p>
+            <p className="text-xs text-ink-muted">Sua visão de investimentos está disponível.</p>
           </div>
         </motion.div>
       )}

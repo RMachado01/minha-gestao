@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Bot, ChevronDown, LoaderCircle, RefreshCw, Send, Sparkles, X } from "lucide-react";
 import { answerFinancialQuestion, computeInsights, type FinancialGoal, type Insight, type TransactionSummary } from "@/lib/goals";
@@ -38,6 +38,23 @@ export function FinancialAdvisorWidget() {
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<AdvisorMessage[]>([{ role: "assistant", text: "Olá! Analiso somente os dados cadastrados na sua conta. Pergunte sobre gastos, saldo, cartões, reserva ou metas." }]);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    const focusDialog = window.requestAnimationFrame(() => dialogRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(focusDialog);
+      document.removeEventListener("keydown", closeOnEscape);
+      trigger?.focus();
+    };
+  }, [open]);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -48,8 +65,11 @@ export function FinancialAdvisorWidget() {
     if (!auth.user) { setError("Sua sessão expirou."); setLoading(false); return; }
     const userId = auth.user.id;
     const referenceMonth = new Date().toISOString().slice(0, 7);
+    const historyStart = new Date();
+    historyStart.setMonth(historyStart.getMonth() - 23, 1);
+    const historyStartIso = historyStart.toISOString().slice(0, 10);
     const [transactions, goals, investments, cards, bills] = await Promise.all([
-      supabase.from("transactions").select("type,amount,occurred_on,category").eq("user_id", userId).order("occurred_on", { ascending: false }).limit(1000),
+      supabase.from("transactions").select("type,amount,occurred_on,category").eq("user_id", userId).gte("occurred_on", historyStartIso).order("occurred_on", { ascending: false }).limit(2000),
       supabase.from("financial_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("investments").select("invested_amount").eq("user_id", userId),
       supabase.from("credit_cards").select("card_type,vr_balance,va_balance,flex_balance").eq("user_id", userId).eq("active", true),
@@ -82,11 +102,11 @@ export function FinancialAdvisorWidget() {
 
   return (
     <>
-      <button type="button" onClick={() => { const next = !open; setOpen(next); if (next && !loaded) void load(); }} className="fixed bottom-24 right-3 z-[60] flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-3)] px-4 text-sm font-semibold text-white shadow-2xl shadow-[var(--color-accent)]/25 lg:bottom-6 lg:right-6" aria-label={open ? "Fechar assessor financeiro" : "Abrir assessor financeiro"} aria-expanded={open}>
+      <button ref={triggerRef} type="button" onClick={() => { const next = !open; setOpen(next); if (next && !loaded) void load(); }} className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[60] flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-3)] px-4 text-sm font-semibold text-white shadow-2xl shadow-[var(--color-accent)]/25 lg:bottom-6 lg:right-6" aria-label={open ? "Fechar assessor financeiro" : "Abrir assessor financeiro"} aria-expanded={open} aria-controls="financial-advisor-dialog">
         {open ? <ChevronDown className="size-5" /> : <Sparkles className="size-5" />}<span>{open ? "Minimizar" : "Meu assessor"}</span>
       </button>
       <AnimatePresence>
-        {open && <motion.section role="dialog" aria-label="Assessor financeiro" data-lenis-prevent className="liquid-glass-hero fixed inset-x-3 bottom-[9.7rem] z-[59] flex max-h-[68dvh] flex-col overflow-hidden rounded-[1.75rem] shadow-2xl sm:left-auto sm:w-[430px] lg:bottom-20 lg:right-6" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .97 }}>
+        {open && <motion.section ref={dialogRef} tabIndex={-1} id="financial-advisor-dialog" role="dialog" aria-label="Assessor financeiro" data-lenis-prevent className="liquid-glass-hero fixed inset-x-3 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-[59] flex max-h-[calc(100dvh-12rem-env(safe-area-inset-bottom))] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[1.75rem] shadow-2xl outline-none sm:left-auto sm:w-[430px] lg:bottom-20 lg:right-6" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .97 }}>
           <header className="flex items-center gap-3 border-b border-[var(--color-line)] p-4"><span className="grid size-10 place-items-center rounded-2xl bg-accent/10 text-accent"><Bot className="size-5" /></span><div className="min-w-0 flex-1"><h2 className="font-semibold text-ink">Assessor da sua conta</h2><p className="text-xs text-ink-muted">Análises com seus dados cadastrados</p></div><button type="button" onClick={() => void load()} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5" aria-label="Atualizar dados"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /></button><button type="button" onClick={() => setOpen(false)} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5" aria-label="Fechar"><X className="size-4" /></button></header>
           {data.goals.length > 0 && <div className="border-b border-[var(--color-line)] px-4 py-3"><label className="text-xs font-medium text-ink-muted">Meta usada nas projeções<SelectField className="mt-1 min-h-10 py-2 text-sm" value={selectedGoalId} onChange={(event) => setSelectedGoalId(event.target.value)}><option value="">Visão geral</option>{data.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</SelectField></label></div>}
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">

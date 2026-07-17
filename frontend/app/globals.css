@@ -79,6 +79,8 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body::before {
@@ -301,6 +303,12 @@ input[type="checkbox"] { accent-color: var(--color-accent); }
 }
 .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
 .btn-primary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+/* .btn-primary define display; esta regra preserva o breakpoint do CTA do topo. */
+.topbar-new-launch { display: none; }
+@media (min-width: 64rem) {
+  .topbar-new-launch { display: inline-flex; }
+}
 
 :where(a, button, input, select, textarea):focus-visible {
   outline: 2px solid var(--color-accent);

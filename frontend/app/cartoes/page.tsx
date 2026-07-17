@@ -25,10 +25,7 @@ import { CardBrandMark } from "@/components/cards/CardBrandMark";
 import { RaiseCelebration } from "@/components/ui/RaiseCelebration";
 import { BANKS, getBrand } from "@/lib/brands";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
-import {
-  faturasHistorico,
-  type Cartao,
-} from "@/lib/data/empty";
+import type { Cartao } from "@/lib/data/empty";
 import { useCreditCards, type CreditCardRecord } from "@/lib/supabase/useCreditCards";
 
 /** Limiar de uso do limite que dispara sinal de atenção. */
@@ -230,7 +227,7 @@ function BenefitCardItem({ record, delay, onEdit, onDelete }: { record: CreditCa
 }
 
 export default function CartoesPage() {
-  const { cards: storedCards, loading, refresh } = useCreditCards();
+  const { cards: storedCards, billHistory, loading, error, refresh } = useCreditCards();
   const [managedCard, setManagedCard] = useState<CreditCardRecord | null>(null);
   const [dialogMode, setDialogMode] = useState<"edit" | "delete">("edit");
   const [celebration, setCelebration] = useState("");
@@ -243,15 +240,15 @@ export default function CartoesPage() {
     bandeira: card.brand,
     banco: card.bank ?? "",
     limiteTotal: card.total_limit,
-    limiteUsado: card.current_bill,
+    limiteUsado: card.current_bill_status === "paid" ? 0 : card.current_bill,
     faturaAtual: card.current_bill,
     vencimento: `${String(card.due_day).padStart(2, "0")}/${month}`,
-    status: "aberta",
+    status: card.current_bill_status === "paid" ? "paga" : card.current_bill_status === "closed" ? "fechada" : "aberta",
     cor: card.color ?? "#006b3f",
   }));
   const limiteTotal = cartoes.reduce((sum, card) => sum + card.limiteTotal, 0);
   const limiteUsado = cartoes.reduce((sum, card) => sum + card.limiteUsado, 0);
-  const faturasEmAberto = cartoes.reduce((sum, card) => sum + card.faturaAtual, 0);
+  const faturasEmAberto = cartoes.reduce((sum, card) => sum + (card.status === "paga" ? 0 : card.faturaAtual), 0);
   const proximoVencimento = cartoes.length > 0
     ? cartoes.map((card) => card.vencimento).sort((a, b) => Number(a.slice(0, 2)) - Number(b.slice(0, 2)))[0]
     : "—";
@@ -259,8 +256,8 @@ export default function CartoesPage() {
   const disponivelGlobal = limiteTotal - limiteUsado;
 
   // Tendência da fatura consolidada: mês atual vs. anterior (cair = bom → invert).
-  const atual = Number(faturasHistorico.at(-1)?.total ?? 0);
-  const anterior = Number(faturasHistorico.at(-2)?.total ?? 0);
+  const atual = Number(billHistory.at(-1)?.total ?? 0);
+  const anterior = Number(billHistory.at(-2)?.total ?? 0);
   const tendenciaFatura = anterior > 0 ? variacao(atual, anterior) : 0;
 
   return (
@@ -288,6 +285,13 @@ export default function CartoesPage() {
         <CardRegistration onSaved={refresh} />
       </div>
 
+      {error && (
+        <div role="status" className="flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-warn">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* --- KPIs consolidados --- */}
       <BentoGrid>
         {/* Hero: faturas em aberto (destaque) */}
@@ -302,13 +306,12 @@ export default function CartoesPage() {
               </span>
               <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
                 <span className="tnum min-w-0 shrink break-words text-4xl font-bold text-ink sm:text-5xl">
-                  {formatBRL(faturasEmAberto)}
+                  {loading ? "—" : formatBRL(faturasEmAberto)}
                 </span>
-                <TrendBadge value={tendenciaFatura} invert className="mb-1 shrink-0" />
+                {!loading && billHistory.length > 1 && <TrendBadge value={tendenciaFatura} invert className="mb-1 shrink-0" />}
               </div>
               <p className="mt-1.5 text-xs text-ink-muted">
-                Soma das faturas atuais dos {cartoes.length} cartões · vs. mês
-                anterior
+                {loading ? "Consultando suas faturas..." : `Soma das faturas atuais dos ${cartoes.length} cartões · vs. mês anterior`}
               </p>
             </div>
           </div>
@@ -350,17 +353,17 @@ export default function CartoesPage() {
         <KpiCard
           className="col-span-12 sm:col-span-6 lg:col-span-3"
           label="Limite disponível"
-          value={formatBRL(disponivelGlobal)}
+          value={loading ? "—" : formatBRL(disponivelGlobal)}
           tone="pos"
           icon={<Wallet className="h-4 w-4" strokeWidth={2} />}
-          hint={`de ${formatBRL(limiteTotal)} no total`}
+          hint={loading ? "Carregando limites..." : `de ${formatBRL(limiteTotal)} no total`}
         />
         <KpiCard
           className="col-span-12 sm:col-span-6 lg:col-span-3"
           label="Próximo vencimento"
-          value={proximoVencimento}
+          value={loading ? "—" : proximoVencimento}
           icon={<CalendarClock className="h-4 w-4" strokeWidth={2} />}
-          hint={cartoes.length > 0 ? "Próxima fatura em aberto" : "Nenhum cartão cadastrado"}
+          hint={loading ? "Carregando vencimentos..." : cartoes.length > 0 ? "Próxima fatura em aberto" : "Nenhum cartão cadastrado"}
         />
       </BentoGrid>
 
@@ -381,6 +384,12 @@ export default function CartoesPage() {
               onDelete={(card) => { setManagedCard(card); setDialogMode("delete"); }}
             />
           ))}
+          {!loading && cartoes.length === 0 && (
+            <GlassCard variant="liquid" className="col-span-12 py-10 text-center">
+              <p className="font-medium text-ink">Nenhum cartão de crédito cadastrado</p>
+              <p className="mt-1 text-sm text-ink-muted">Cadastre um cartão para acompanhar limite, vencimento e faturas.</p>
+            </GlassCard>
+          )}
         </BentoGrid>
       </div>
 
@@ -391,30 +400,45 @@ export default function CartoesPage() {
 
       {/* --- Histórico das faturas --- */}
       <GlassCard variant="liquid">
-        <BillCalendar cards={cartoes} />
+        {loading ? (
+          <div className="grid min-h-55 place-items-center text-sm text-ink-muted" role="status">Carregando calendário de vencimentos...</div>
+        ) : (
+          <BillCalendar cards={cartoes} />
+        )}
       </GlassCard>
 
       <GlassCard variant="liquid">
         <SectionHeader
           title="Total das faturas mês a mês"
-          subtitle="Evolução do valor consolidado em aberto"
+          subtitle="Lançamentos e faturas consolidados dos últimos 12 meses"
           action={
-            <TrendBadge value={tendenciaFatura} invert className="shrink-0" />
+            billHistory.length > 1 ? <TrendBadge value={tendenciaFatura} invert className="shrink-0" /> : undefined
           }
         />
-        <TrendLineChart
-          data={faturasHistorico}
-          xKey="periodo"
-          series={[
-            {
-              key: "total",
-              label: "Total das faturas",
-              color: CHART.accent,
-              area: true,
-            },
-          ]}
-          height={280}
-        />
+        {loading ? (
+          <div className="grid h-70 place-items-center text-sm text-ink-muted" role="status">Carregando histórico de faturas...</div>
+        ) : billHistory.length > 0 ? (
+          <TrendLineChart
+            data={billHistory}
+            xKey="periodo"
+            series={[
+              {
+                key: "total",
+                label: "Total das faturas",
+                color: CHART.accent,
+                area: true,
+              },
+            ]}
+            height={280}
+          />
+        ) : (
+          <div className="grid min-h-55 place-items-center rounded-2xl border border-dashed border-[var(--color-line)] px-6 text-center">
+            <div>
+              <p className="font-medium text-ink">Ainda não há histórico de faturas</p>
+              <p className="mt-1 text-sm text-ink-muted">As compras atribuídas a cartões aparecerão aqui, organizadas por mês.</p>
+            </div>
+          </div>
+        )}
       </GlassCard>
       <CardManagementDialog key={`${managedCard?.id ?? "none"}-${dialogMode}`} card={managedCard} mode={dialogMode} onClose={() => setManagedCard(null)} onChanged={refresh} onRaise={setCelebration} />
       <RaiseCelebration visible={celebration !== ""} message={celebration} onClose={() => setCelebration("")} />

@@ -63,18 +63,55 @@ class EnergyCostResult(BaseModel):
 
 
 class UberDailyEntryCreate(BaseModel):
+    entry_kind: Literal["uber", "garage"] = "uber"
     occurred_on: date
     vehicle_id: UUID | None = None
-    kilometers: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    kilometers: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
     gross_revenue: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
     powertrain: Literal["combustion", "hybrid", "electric"]
     efficiency: Decimal = Field(gt=0, max_digits=12, decimal_places=3)
-    unit_price: Decimal = Field(gt=0, max_digits=12, decimal_places=4)
+    unit_price: Decimal = Field(ge=0, max_digits=12, decimal_places=4)
     other_costs: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
+    hours_worked: Decimal | None = Field(
+        default=None, ge=0, max_digits=6, decimal_places=2
+    )
+    odometer_start: Decimal | None = Field(
+        default=None, ge=0, max_digits=12, decimal_places=2
+    )
+    odometer_end: Decimal | None = Field(
+        default=None, ge=0, max_digits=12, decimal_places=2
+    )
     idempotency_key: str = Field(min_length=8, max_length=80)
+
+    @model_validator(mode="after")
+    def validate_distance_and_entry_kind(self):
+        has_start = self.odometer_start is not None
+        has_end = self.odometer_end is not None
+        if has_start != has_end:
+            raise ValueError("odometer_start e odometer_end devem ser informados juntos")
+
+        if has_start and has_end:
+            distance = (self.odometer_end - self.odometer_start).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            if distance <= 0:
+                raise ValueError("odometer_end deve ser maior que odometer_start")
+            # O odômetro é a fonte de verdade, evitando divergência entre os
+            # valores persistidos e a distância usada nos custos.
+            self.kilometers = distance
+        elif self.kilometers is None:
+            raise ValueError("kilometers ou o par de odômetros é obrigatório")
+
+        if self.entry_kind == "garage":
+            if self.gross_revenue != 0:
+                raise ValueError("gross_revenue deve ser zero para uso pessoal")
+            if self.hours_worked is not None:
+                raise ValueError("hours_worked deve ser vazio para uso pessoal")
+        return self
 
     @property
     def consumed_units(self) -> Decimal:
+        assert self.kilometers is not None
         if self.powertrain == "electric":
             return (self.kilometers * self.efficiency / Decimal("100")).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
         return (self.kilometers / self.efficiency).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
@@ -132,7 +169,7 @@ class CategoryRead(BaseModel):
 
 class RecurrenceRuleCreate(BaseModel):
     description: str = Field(min_length=2, max_length=240)
-    type: Literal["subscription", "installment", "fixed_bill"]
+    type: Literal["subscription", "installment", "fixed_bill", "income"]
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     day_of_month: int = Field(ge=1, le=31)
     start_date: date
@@ -227,6 +264,7 @@ class TransactionRead(BaseModel):
     occurred_on: date
     description: str
     category: str
+    payment_method: str | None
     category_id: UUID | None
     origin: str | None
     status: str

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Compass, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { usePersonalization } from "@/lib/usePersonalization";
@@ -27,6 +27,14 @@ export function OnboardingTour() {
   const [storageKey, setStorageKey] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<TargetRect | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const finish = useCallback(() => {
+    if (storageKey) localStorage.setItem(storageKey, "true");
+    window.dispatchEvent(new CustomEvent("mg-close-mobile-nav"));
+    setOpen(false);
+  }, [storageKey]);
 
   useEffect(() => {
     let active = true;
@@ -72,15 +80,55 @@ export function OnboardingTour() {
     };
   }, [open, step]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusDialog = window.requestAnimationFrame(() => dialogRef.current?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusDialog);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus();
+    };
+  }, [finish, open]);
+
   if (!open) return null;
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
-
-  function finish() {
-    if (storageKey) localStorage.setItem(storageKey, "true");
-    window.dispatchEvent(new CustomEvent("mg-close-mobile-nav"));
-    setOpen(false);
-  }
 
   const desktopTooltip = rect && window.innerWidth >= 640;
   const tooltipStyle = desktopTooltip ? {
@@ -89,14 +137,14 @@ export function OnboardingTour() {
   } : undefined;
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none" aria-live="polite">
-      {rect && <div className="fixed rounded-2xl ring-4 ring-accent ring-offset-4 ring-offset-transparent transition-all duration-300" style={{ top: rect.top - 4, left: rect.left - 4, width: rect.width + 8, height: rect.height + 8, boxShadow: "0 0 0 9999px rgb(0 0 0 / .58), 0 12px 40px rgb(0 0 0 / .3)" }} />}
-      {!rect && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />}
-      <section role="dialog" aria-modal="true" aria-labelledby="onboarding-title" className="ios-glass pointer-events-auto fixed inset-x-4 bottom-[6.5rem] z-[102] max-h-[70dvh] overflow-y-auto rounded-[1.75rem] p-5 shadow-2xl sm:inset-x-auto sm:bottom-auto sm:w-[380px] sm:p-6" style={tooltipStyle}>
+    <div className="pointer-events-auto fixed inset-0 z-[100]" aria-live="polite">
+      {rect && <div aria-hidden className="pointer-events-none fixed rounded-2xl ring-4 ring-accent ring-offset-4 ring-offset-transparent transition-all duration-300" style={{ top: rect.top - 4, left: rect.left - 4, width: rect.width + 8, height: rect.height + 8, boxShadow: "0 0 0 9999px rgb(0 0 0 / .58), 0 12px 40px rgb(0 0 0 / .3)" }} />}
+      {!rect && <div aria-hidden className="pointer-events-none fixed inset-0 bg-black/60 backdrop-blur-sm" />}
+      <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description" className="ios-glass fixed inset-x-4 bottom-[6.5rem] z-[102] max-h-[70dvh] overflow-y-auto rounded-[1.75rem] p-5 shadow-2xl outline-none sm:inset-x-auto sm:bottom-auto sm:w-[380px] sm:p-6" style={tooltipStyle}>
         <div className="flex items-start justify-between gap-4"><span className="grid size-11 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-accent)_18%,transparent)] text-accent"><Compass className="size-5" /></span><button type="button" onClick={finish} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5 hover:text-ink" aria-label="Pular tour"><X className="size-4" /></button></div>
         <p className="mt-5 text-xs font-semibold uppercase tracking-[.18em] text-accent">Passo {step + 1} de {STEPS.length}</p>
         <h2 id="onboarding-title" className="mt-2 text-xl font-semibold tracking-tight text-ink">{current.title}</h2>
-        <p className="mt-2 text-sm leading-6 text-ink-soft">{current.description}</p>
+        <p id="onboarding-description" className="mt-2 text-sm leading-6 text-ink-soft">{current.description}</p>
         <div className="mt-5 flex items-center gap-2" aria-hidden>{STEPS.map((item, index) => <span key={item.id} className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-accent" : "bg-[var(--color-line-strong)]"}`} />)}</div>
         <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => step === 0 ? finish() : setStep((value) => value - 1)} className="inline-flex items-center gap-1 px-2 py-2 text-sm font-medium text-ink-muted hover:text-ink">{step === 0 ? "Pular" : <><ArrowLeft className="size-4" />Voltar</>}</button><button type="button" onClick={() => isLast ? finish() : setStep((value) => value + 1)} className="btn-primary">{isLast ? <><Check className="size-4" />Concluir</> : <>Próximo<ArrowRight className="size-4" /></>}</button></div>
       </section>

@@ -33,6 +33,15 @@ export function MobileNav() {
     return () => { window.removeEventListener("mg-open-mobile-nav", show); window.removeEventListener("mg-close-mobile-nav", hide); };
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
   return (
     <>
       <nav className="liquid-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.4rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">

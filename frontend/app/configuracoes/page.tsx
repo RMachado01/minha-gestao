@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -11,7 +11,6 @@ import {
   Moon,
   Palette,
   Phone,
-  Plus,
   ShieldCheck,
   Sun,
   Trash2,
@@ -33,14 +32,81 @@ import { cn } from "@/lib/cn";
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    stateCode: "",
+    currency: "BRL",
+  });
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [family] = useState<Array<{ name: string; relation: string; email: string }>>([]);
+  const [deleteError, setDeleteError] = useState("");
   const { accent, setAccent, setPhoto, setName } = usePersonalization();
   const { isUber, setUberMode } = useUberMode();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    function syncTheme() {
+      setIsDark(document.documentElement.dataset.theme !== "light");
+    }
+
+    syncTheme();
+    window.addEventListener("mg-theme-change", syncTheme);
+    return () => window.removeEventListener("mg-theme-change", syncTheme);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      const supabase = createClient();
+      if (!supabase) {
+        if (active) {
+          setProfileError("Supabase não configurado.");
+          setProfileLoading(false);
+        }
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (!active) return;
+      if (userError || !userData.user) {
+        setProfileError("Não foi possível identificar sua conta.");
+        setProfileLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name,phone,state_code,currency")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      if (!active) return;
+      if (error) {
+        setProfileError("Não foi possível carregar seu perfil.");
+      } else {
+        setProfile({
+          fullName: data?.full_name ?? "",
+          email: userData.user.email ?? "",
+          phone: data?.phone ?? "",
+          stateCode: data?.state_code ?? "",
+          currency: data?.currency ?? "BRL",
+        });
+      }
+      setProfileLoading(false);
+    }
+
+    void loadProfile();
+    return () => { active = false; };
+  }, []);
 
   function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -63,25 +129,104 @@ export default function ConfiguracoesPage() {
       .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
       ?.setAttribute("content", next === "light" ? "#f8fafc" : "#06080f");
     localStorage.setItem("mg-theme", next);
+    setIsDark(next === "dark");
     window.dispatchEvent(new Event("mg-theme-change"));
+  }
+
+  async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileSaving(true);
+    setProfileError("");
+    setSaved(false);
+    const supabase = createClient();
+    if (!supabase) {
+      setProfileError("Supabase não configurado.");
+      setProfileSaving(false);
+      return;
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      setProfileError("Sua sessão expirou. Entre novamente para salvar.");
+      setProfileSaving(false);
+      return;
+    }
+
+    const fullName = profile.fullName.trim();
+    if (!fullName) {
+      setProfileError("Informe seu nome completo.");
+      setProfileSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from("profiles").upsert({
+      id: userData.user.id,
+      full_name: fullName,
+      phone: profile.phone.trim() || null,
+      state_code: profile.stateCode || null,
+      currency: profile.currency,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      setProfileError("Não foi possível salvar o perfil. Tente novamente.");
+      setProfileSaving(false);
+      return;
+    }
+
+    setName(fullName);
+    setProfile((current) => ({ ...current, fullName }));
+    setSaved(true);
+    setProfileSaving(false);
+    window.setTimeout(() => setSaved(false), 2200);
   }
 
   async function handleExportData() {
     setExporting(true);
+    setExportError("");
     const supabase = createClient();
     if (!supabase) {
+      setExportError("Supabase não configurado.");
       setExporting(false);
       return;
     }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setExporting(false); return; }
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      setExportError("Sua sessão expirou. Entre novamente para exportar.");
+      setExporting(false);
+      return;
+    }
 
-    const tables = ["profiles", "transactions", "credit_cards", "credit_card_bills", "categories", "recurrence_rules", "investments", "investment_snapshots", "vehicles", "uber_daily_entries", "consent_logs"];
-    const exportData: Record<string, unknown[]> = { user: { id: user.id, email: user.email, created_at: user.created_at } as unknown as unknown[] };
+    const tables = [
+      "profiles",
+      "households",
+      "household_members",
+      "categories",
+      "recurrence_rules",
+      "credit_cards",
+      "credit_card_bills",
+      "transactions",
+      "investments",
+      "investment_snapshots",
+      "investment_income",
+      "financial_goals",
+      "goal_events",
+      "vehicles",
+      "uber_daily_entries",
+      "consent_logs",
+    ];
+    const exportData: Record<string, unknown> = {
+      exported_at: new Date().toISOString(),
+      user: { id: user.id, email: user.email, created_at: user.created_at },
+    };
 
     for (const table of tables) {
-      const { data } = await supabase.from(table).select("*");
-      if (data && data.length > 0) exportData[table] = data;
+      const { data, error } = await supabase.from(table).select("*");
+      if (error) {
+        setExportError(`Não foi possível exportar a tabela ${table}. Nenhum arquivo foi gerado.`);
+        setExporting(false);
+        return;
+      }
+      exportData[table] = data ?? [];
     }
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
@@ -97,30 +242,28 @@ export default function ConfiguracoesPage() {
   async function handleDeleteAccount() {
     if (deleteText !== "EXCLUIR") return;
     setDeleting(true);
+    setDeleteError("");
     const supabase = createClient();
-    if (!supabase) { setDeleting(false); return; }
-
-    // Call edge function or RPC to delete; fallback: sign out and show message
-    // The actual deletion requires a server-side admin call.
-    // For now, we invoke an RPC function that must be created in Supabase.
-    const { error } = await supabase.rpc("delete_own_account");
-    if (error) {
-      // If RPC doesn't exist yet, sign out and instruct user
-      await supabase.auth.signOut();
-      localStorage.clear();
-      router.replace("/login");
+    if (!supabase) {
+      setDeleteError("Supabase não configurado. A conta não foi excluída.");
+      setDeleting(false);
       return;
     }
 
-    await supabase.auth.signOut();
-    localStorage.clear();
-    router.replace("/login");
-  }
+    const { error } = await supabase.rpc("delete_own_account");
+    if (error) {
+      setDeleteError("Não foi possível excluir a conta. Seus dados continuam intactos. Tente novamente ou contate o suporte.");
+      setDeleting(false);
+      return;
+    }
 
-  const isDark =
-    typeof document !== "undefined"
-      ? document.documentElement.dataset.theme !== "light"
-      : true;
+    await supabase.auth.signOut({ scope: "local" });
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("mg-")) localStorage.removeItem(key);
+    }
+    router.replace("/login?account=deleted");
+    router.refresh();
+  }
 
   return (
     <section className="flex flex-col gap-6">
@@ -146,16 +289,7 @@ export default function ConfiguracoesPage() {
           </div>
           <form
             className="grid gap-4 sm:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = event.currentTarget;
-              const nameInput = form.querySelector<HTMLInputElement>(
-                'input[name="fullName"]',
-              );
-              if (nameInput?.value) setName(nameInput.value);
-              setSaved(true);
-              setTimeout(() => setSaved(false), 2000);
-            }}
+            onSubmit={handleSaveProfile}
           >
             <label className="field-label sm:col-span-2">
               Nome completo
@@ -163,6 +297,10 @@ export default function ConfiguracoesPage() {
                 name="fullName"
                 className="field"
                 placeholder="Seu nome completo"
+                value={profile.fullName}
+                onChange={(event) => setProfile((current) => ({ ...current, fullName: event.target.value }))}
+                disabled={profileLoading || profileSaving}
+                required
               />
             </label>
             <label className="field-label">
@@ -173,8 +311,12 @@ export default function ConfiguracoesPage() {
                   className="field field-with-leading"
                   type="email"
                   placeholder="voce@email.com"
+                  value={profile.email}
+                  readOnly
+                  aria-describedby="profile-email-help"
                 />
               </div>
+              <span id="profile-email-help" className="field-help">Altere o e-mail pela autenticação da conta.</span>
             </label>
             <label className="field-label">
               Telefone
@@ -184,33 +326,34 @@ export default function ConfiguracoesPage() {
                   className="field field-with-leading"
                   type="tel"
                   placeholder="(00) 00000-0000"
+                  value={profile.phone}
+                  onChange={(event) => setProfile((current) => ({ ...current, phone: event.target.value }))}
+                  disabled={profileLoading || profileSaving}
                 />
               </div>
             </label>
             <label className="field-label">
               Estado
-              <select className="field" defaultValue="">
+              <select className="field" value={profile.stateCode} onChange={(event) => setProfile((current) => ({ ...current, stateCode: event.target.value }))} disabled={profileLoading || profileSaving}>
                 <option value="" disabled>Selecione</option>
-                <option>SP</option>
-                <option>RJ</option>
-                <option>MG</option>
-                <option>PR</option>
-                <option>SC</option>
-                <option>RS</option>
+                {"AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ").map((state) => <option key={state} value={state}>{state}</option>)}
               </select>
             </label>
             <label className="field-label">
               Moeda
-              <select className="field">
-                <option>BRL — Real brasileiro</option>
+              <select className="field" value={profile.currency} onChange={(event) => setProfile((current) => ({ ...current, currency: event.target.value }))} disabled={profileLoading || profileSaving}>
+                <option value="BRL">BRL — Real brasileiro</option>
               </select>
             </label>
-            <button className="btn-primary sm:col-span-2" type="submit">
+            {profileError && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2">{profileError}</p>}
+            <button className="btn-primary sm:col-span-2" type="submit" disabled={profileLoading || profileSaving}>
               {saved ? (
                 <>
                   <Check className="size-4" />
                   Alterações salvas
                 </>
+              ) : profileSaving ? (
+                "Salvando..."
               ) : (
                 "Salvar perfil"
               )}
@@ -336,44 +479,20 @@ export default function ConfiguracoesPage() {
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {family.map((member, index) => (
-              <div
-                key={`${member.email}-${index}`}
-                className="liquid-glass rounded-2xl p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-ink">{member.name}</p>
-                    <p className="text-xs text-ink-muted">
-                      {member.relation} · {member.email}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] font-semibold text-warn">
-                    Convite futuro
-                  </span>
-                </div>
-              </div>
-            ))}
-            {family.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-[var(--color-line)] p-4 text-sm text-ink-muted">
-                Nenhum familiar adicionado.
-              </p>
-            )}
-            <button
-              type="button"
-              disabled
-              className="flex min-h-[4.5rem] items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-line-strong)] p-3 text-sm font-semibold text-ink-soft transition-colors hover:border-[var(--color-accent)] hover:text-ink"
-            >
-              <Plus className="size-4" />
-              Adicionar familiar (em breve)
-            </button>
+          <div className="mt-5 rounded-2xl border border-dashed border-[var(--color-line)] p-5">
+            <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-warn">
+              Recurso planejado
+            </span>
+            <p className="mt-3 text-sm font-medium text-ink">Compartilhamento familiar ainda não está disponível.</p>
+            <p className="mt-1 text-sm text-ink-muted">
+              A estrutura de permissões está sendo preparada, mas convites por e-mail e gestão de acessos ainda exigem um fluxo seguro no servidor.
+            </p>
           </div>
           <div className="mt-5 flex gap-3 rounded-2xl bg-emerald-400/10 p-4 text-sm text-ink-soft">
             <ShieldCheck className="size-5 shrink-0 text-pos" />
             <p>
-              Cada familiar terá login próprio e acesso limitado por políticas
-              RLS do Supabase.
+              Quando lançado, cada familiar terá login próprio e acesso limitado
+              por políticas RLS do Supabase.
             </p>
           </div>
         </GlassCard>
@@ -407,6 +526,7 @@ export default function ConfiguracoesPage() {
               </>
             )}
           </button>
+          {exportError && <p role="alert" className="mt-3 rounded-2xl bg-rose-400/10 p-3 text-sm text-neg">{exportError}</p>}
         </GlassCard>
 
         <GlassCard variant="liquid" className="col-span-12 lg:col-span-6">
@@ -467,6 +587,7 @@ export default function ConfiguracoesPage() {
                   Cancelar
                 </button>
               </div>
+              {deleteError && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg">{deleteError}</p>}
             </div>
           )}
         </GlassCard>
