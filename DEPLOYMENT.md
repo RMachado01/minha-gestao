@@ -175,9 +175,9 @@ Na aba **Settings > Environment Variables**, adicione:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://SEU-REF.supabase.co` | Production, Preview, Development |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOi...` | Production, Preview, Development |
 | `NEXT_PUBLIC_API_URL` | URL do backend em produção | Production |
-| `BRAPI_TOKEN` | Token gratuito de https://brapi.dev | Production, Preview, Development |
+| `NEXT_PUBLIC_HCAPTCHA_SITE_KEY` | Site Key pública do hCaptcha (opcional) | Production, Preview |
 
-`BRAPI_TOKEN` alimenta as cotações ao vivo e o radar de dividendos em Investimentos (`app/api/market/*`, roda no servidor — nunca é enviado ao navegador). Sem essa variável os painéis de mercado mostram um aviso, mas o resto da página continua funcionando normalmente.
+As cotações de mercado **não** usam variável na Vercel — veja a Parte 7 (job de cotações no GitHub Actions).
 
 ### 4.3 Deploy
 
@@ -300,3 +300,26 @@ O que precisa ser configurado **fora do código** (painéis, não arquivos deste
 2. **Proteção DDoS na borda (Vercel)** — a Vercel já aplica mitigação de DDoS de rede/infraestrutura por padrão em todos os planos. Em Project Settings → Security, avalie ativar/ajustar o **Attack Challenge Mode** e (se disponível no seu plano) regras de **Firewall**/rate limit por rota para as páginas de autenticação (`/login`, `/cadastro`, `/redefinir-senha`).
 3. **Ativar o CAPTCHA de fato** — o widget já está implementado no frontend (item acima), mas precisa das duas metades da chave: (a) crie um site em https://dashboard.hcaptcha.com e cole a **Secret Key** em Supabase Authentication → Attack Protection; (b) cole a **Site Key** (pública) na variável `NEXT_PUBLIC_HCAPTCHA_SITE_KEY` nas Environment Variables do projeto na Vercel e faça redeploy. Sem a variável na Vercel, o Supabase vai exigir captcha mas o widget não aparece — login/cadastro ficam bloqueados para todos, então configure as duas pontas juntas.
 4. **Alertas de uso anômalo** — configurar alertas de billing/uso no Supabase e na Vercel para detectar picos incomuns de tráfego (sinal precoce de DDoS ou scraping).
+
+---
+
+## Parte 7: Cotações de mercado (GitHub Actions + brapi.dev)
+
+O radar de dividendos e as cotações da carteira em **Investimentos** são alimentados por um job externo, não pelo carregamento da página. O plano gratuito da brapi.dev só aceita 1 ativo por requisição e limita chamadas simultâneas; buscar tudo na hora que o usuário abre a tela deixava só ~3 ações aparecerem. A solução: um script Python roda de fora, 1 ticker por vez, e grava na tabela `market_quote_cache` do Supabase; o frontend apenas **lê** essa tabela (rápido, sem limite de API).
+
+**Componentes:**
+- `scripts/refresh_market_quotes.py` — busca os tickers da watchlist curada + os tickers das posições cadastradas pelos usuários, 1 por vez, e faz upsert em `market_quote_cache`.
+- `.github/workflows/refresh-market-quotes.yml` — roda a cada 30 min em horário de pregão (13–21 UTC, seg–sex) e também sob demanda (**Run workflow**).
+- Migration `202607170006` deixa a tabela **somente leitura** para o app; a escrita é feita pelo job com a `service_role` key (que ignora RLS).
+
+**Configuração (uma vez):** em GitHub → repositório → **Settings → Secrets and variables → Actions → New repository secret**, adicione:
+
+| Secret | Onde obter |
+|--------|-----------|
+| `BRAPI_TOKEN` | Token gratuito de https://brapi.dev |
+| `SUPABASE_URL` | `https://SEU-REF.supabase.co` (Supabase → Settings → API) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → **service_role** (chave secreta — nunca coloque no frontend nem no Vercel) |
+
+**Primeira carga:** depois de adicionar os secrets, vá em **Actions → Atualizar cotações (brapi.dev) → Run workflow** para semear o cache imediatamente (senão ele só enche no próximo horário agendado). As cotações aparecem na aba Investimentos assim que o job termina.
+
+> A tabela é upsert por ticker (não cresce indefinidamente); o próprio script remove registros de tickers que deixaram de ser rastreados. Se o volume de cotações crescer muito no futuro, avaliar o plano pago da brapi.dev ou reduzir a frequência do cron.

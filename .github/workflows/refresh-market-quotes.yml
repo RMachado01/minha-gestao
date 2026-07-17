@@ -1,0 +1,38 @@
+name: Atualizar cotações (brapi.dev)
+
+# Alimenta market_quote_cache no Supabase de fora do app, para o frontend só
+# ler do banco. Roda a cada 30 min durante o horário de pregão da B3
+# (13:00–21:00 UTC = 10:00–18:00 BRT), de segunda a sexta, poupando a cota
+# gratuita da brapi fora do horário de mercado. Também pode ser disparado
+# manualmente (workflow_dispatch) — útil para semear o cache na primeira vez.
+
+on:
+  schedule:
+    - cron: "*/30 13-21 * * 1-5"
+  workflow_dispatch:
+
+# Evita execuções sobrepostas se uma demorar mais que o intervalo.
+concurrency:
+  group: refresh-market-quotes
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -r scripts/requirements.txt
+
+      - name: Atualizar cotações
+        env:
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/refresh_market_quotes.py

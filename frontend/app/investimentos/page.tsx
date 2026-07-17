@@ -34,6 +34,18 @@ function toneClass(value: number): string {
   return value >= 0 ? "text-pos" : "text-neg";
 }
 
+/** "há 5 min" / "há 2 h" / "hoje" a partir de um ISO — texto curto de frescor do dado. */
+function formatUpdatedAt(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  const days = Math.round(hours / 24);
+  return `há ${days} d`;
+}
+
 /** Linhas de esqueleto — um ticker ainda não resolvido por coluna, enquanto o radar carrega aos poucos. */
 function SkeletonRows({ count, columns }: { count: number; columns: number }) {
   return (
@@ -280,16 +292,19 @@ export default function InvestimentosPage() {
       {/* ---------- Mercado: cotações ao vivo (brapi.dev) ---------- */}
       <div className="flex flex-col gap-1 pt-2">
         <span className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Mercado</span>
-        <h2 className="text-lg font-semibold text-ink">Cotações e dividendos ao vivo</h2>
-        <p className="text-sm text-ink-muted">Dados via brapi.dev, com atraso de alguns minutos. Não é recomendação de investimento.</p>
+        <h2 className="text-lg font-semibold text-ink">Cotações e dividendos</h2>
+        <p className="text-sm text-ink-muted">
+          Dados via brapi.dev, atualizados automaticamente ao longo do pregão. Não é recomendação de investimento.
+          {dividendWatchlist.updatedAt && ` Atualizado ${formatUpdatedAt(dividendWatchlist.updatedAt)}.`}
+        </p>
       </div>
 
       <BentoGrid>
         {carteiraTickers.length > 0 && (
           <GlassCard variant="liquid" className="col-span-12">
             <SectionHeader title="Cotações da carteira" subtitle="Ativos com ticker cadastrado" action={<BarChart3 className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
-            {carteiraQuotes.error && carteiraQuotes.quotes.length === 0 && carteiraQuotes.pending.length === 0 ? (
-              <p className="mt-4 text-sm text-ink-muted">{carteiraQuotes.error}</p>
+            {!carteiraQuotes.loading && carteiraQuotes.quotes.length === 0 ? (
+              <p className="mt-4 text-sm text-ink-muted">{carteiraQuotes.error || "Sem cotações para os tickers cadastrados ainda."}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="mt-2 w-full min-w-[640px] border-collapse text-sm">
@@ -327,7 +342,7 @@ export default function InvestimentosPage() {
                         </motion.tr>
                       ))}
                     </AnimatePresence>
-                    <SkeletonRows count={carteiraQuotes.pending.length} columns={6} />
+                    {carteiraQuotes.loading && <SkeletonRows count={carteiraTickers.length} columns={6} />}
                   </tbody>
                 </table>
               </div>
@@ -337,7 +352,7 @@ export default function InvestimentosPage() {
 
         <GlassCard variant="liquid" className="col-span-12">
           <SectionHeader title="Radar de dividendos" subtitle="Ranking por yield aproximado (12 meses) — universo curado da B3" action={<Radar className="h-4 w-4 text-ink-muted" strokeWidth={2} />} />
-          {dividendWatchlist.error && dividendWatchlist.quotes.length === 0 && dividendWatchlist.pending.length === 0 ? (
+          {!dividendWatchlist.loading && dividendWatchlist.quotes.length === 0 ? (
             <p className="mt-4 text-sm text-ink-muted">{dividendWatchlist.error}</p>
           ) : (
             <div className="overflow-x-auto">
@@ -372,7 +387,7 @@ export default function InvestimentosPage() {
                       </motion.tr>
                     ))}
                   </AnimatePresence>
-                  <SkeletonRows count={dividendWatchlist.pending.length} columns={4} />
+                  {dividendWatchlist.loading && <SkeletonRows count={8} columns={4} />}
                 </tbody>
               </table>
             </div>
