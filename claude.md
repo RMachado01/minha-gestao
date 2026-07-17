@@ -21,11 +21,11 @@ O projeto está em produção e em uso real (algumas contas familiares). Fundaç
 
 - **Frontend:** Next.js 16.2.10, React 19, Tailwind CSS 4, Recharts e `motion` (Framer Motion), com dados reais da conta, estados vazios honestos e dados de demonstração isolados. Publicado na Vercel a partir de `main` (Root Directory = `frontend`; sem `vercel.json` — as configs de build vivem no painel da Vercel).
 - **Backend:** FastAPI com schemas Pydantic, modelos SQLAlchemy assíncronos e rotas versionadas em `/api/v1`. Guarda de inicialização recusa subir fora de `development` com `SUPABASE_JWT_SECRET`/`SECRET_KEY` no valor padrão; rate limit `slowapi` (100 req/min por IP). **Ainda não está hospedado** — o frontend fala direto com o Supabase nos fluxos integrados.
-- **Banco e autenticação:** projeto Supabase/Postgres ativo (ref `fhxwbdhzngrpieedqdzx`, região `sa-east-1`), **12 migrations aplicadas** (até `202607170005`), RLS em todas as tabelas, Auth SSR e RPCs financeiras transacionais. A integração Supabase↔GitHub aplica migrations automaticamente ao mergear em `main` — ao clonar em outra máquina, rodar `git pull` antes de qualquer `supabase migration list`, senão o histórico local diverge do remoto.
+- **Banco e autenticação:** projeto Supabase/Postgres ativo (ref `fhxwbdhzngrpieedqdzx`, região `sa-east-1`), **14 migrations aplicadas** (até `20260717204225`), RLS em todas as tabelas, Auth SSR e RPCs financeiras transacionais. A integração Supabase↔GitHub aplica migrations automaticamente ao mergear em `main` — ao clonar em outra máquina, rodar `git pull` antes de qualquer `supabase migration list`, senão o histórico local diverge do remoto.
 - **Integrações externas:** cotações da B3 via **brapi.dev** (token `BRAPI_TOKEN`, só no servidor) e **hCaptcha** opcional (`NEXT_PUBLIC_HCAPTCHA_SITE_KEY` no Vercel + Secret no Supabase Attack Protection).
 - **Versionamento:** repositório privado [RMachado01/minha-gestao](https://github.com/RMachado01/minha-gestao), branch `main`. O fluxo desta fase é commit direto em `main` (a integração da Vercel faz o deploy); PRs foram usados na fase de auditoria/segurança.
 - **Execução local:** frontend em `http://localhost:3000`; API em `http://localhost:8000`; OpenAPI em `/docs`.
-- **Limite atual:** módulos legados de perfil/planejamento ainda dependem de conclusão; o FastAPI está estruturado mas não hospedado; falta suíte de testes E2E.
+- **Limite atual:** o planejamento ainda é majoritariamente local/visual; o FastAPI está estruturado e testado, mas não hospedado; os E2E públicos cobrem autenticação responsiva, enquanto fluxos autenticados ainda precisam de ambiente de teste isolado.
 
 ---
 
@@ -505,22 +505,27 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Projeções comparativas para poupança, CDB, Tesouro Direto, ações/dividendos e taxa personalizada; hipóteses são editáveis e apresentadas como simulação bruta, não promessa de retorno.
 - Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC.
 - Assessor financeiro global fica fixo no shell autenticado e responde, em qualquer aba, sobre saldo, comparação mensal, taxa de economia, categorias, faturas, VR/VA, reserva, investimentos e prazo das metas usando somente dados reais da conta. Hoje é um motor contextual local baseado em regras, sem LLM e sem promessa de aconselhamento profissional.
-- Cadastro de cartões persistido na Supabase e calendário de vencimentos baseado no mês atual.
+- Cadastro de cartões persistido na Supabase; calendário, status e histórico consolidado de 12 meses usam faturas e lançamentos reais, sem séries mockadas.
 - Cartões existentes podem ser editados ou arquivados com confirmação; a remoção preserva compras e faturas históricas vinculadas.
 - A cor de destaque personalizada controla gradientes de botões, navegação e estados interativos por meio de tokens derivados.
-- Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final, com comparação à média de sete dias.
+- Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final. O painel mensal/anual agrega registros reais, compara o período anterior e atualiza logo após salvar.
+- Planejamento deixou de usar a lista demonstrativa: consulta despesas e compras-benefício reais, classifica vencidos/próximos/agendados e permite marcar o lançamento como pago com confirmação do banco.
 - Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
 - Tour guiado de cinco etapas no primeiro login usa spotlight e âncoras reais em visão geral, novo lançamento, cartões, metas e configurações; no mobile abre o drawer quando o alvo está em `Mais`.
-- Configurações de perfil e estrutura inicial de grupo familiar.
+- Tour, assessor e menu mobile possuem Escape, gestão/restauração de foco e respeito à safe-area; login e cadastro são verificados sem overflow em desktop e mobile.
+- Configurações de perfil persistem nome, telefone, UF e moeda; exportação LGPD abrange 16 tabelas e exclusão nunca simula sucesso em caso de erro. Grupo familiar permanece identificado honestamente como recurso planejado até existir convite seguro no servidor.
+- Garagem, cadastro de veículos e diário Uber persistem dados reais. Registros pessoais e de trabalho são separados por `entry_kind`; horas e odômetros são armazenados e a view Uber ignora uso pessoal.
 - FastAPI com health check, contratos de transações, cartões, veículos, diário Uber, perfil e convites familiares; guarda de secret padrão em produção e rate limit `slowapi`.
-- **12 migrations** Supabase aplicadas no projeto remoto: schema inicial/completo, LGPD, hardening, metas/eventos, cartões-benefício, hardening da RPC de metas, proventos de investimento, renda recorrente + vínculo meta↔transação, e cache de cotações.
+- **14 migrations** Supabase aplicadas no projeto remoto: schema inicial/completo, LGPD, hardening, metas/eventos, cartões-benefício, hardening da RPC de metas, proventos de investimento, renda recorrente + vínculo meta↔transação, cache de cotações, otimização RLS/índices e persistência de uso veicular.
 - Views financeiras e RPCs de benefício/metas usam `security_invoker`; RLS restringe os dados a `auth.uid()` e os testes de rollback transacional passaram.
 - A função `delete_own_account()` permanece `security definer` intencionalmente para exclusão LGPD; exige sessão, usa `search_path` vazio e só pode ser executada pelo papel `authenticated`.
 - Build de produção e ESLint validados. Em pastas sincronizadas pelo OneDrive, usar `NEXT_DIST_DIR=.next-build` quando houver lock em `.next`.
-- Repositório Git privado publicado e sincronizado em `origin/main`.
+- CI de qualidade em `.github/workflows/quality.yml`: ESLint, TypeScript, Vitest, build, Playwright, Ruff e Pytest. Atualmente são 9 testes unitários frontend, 6 E2E públicos em Chromium desktop/mobile e 9 testes backend.
+- Dependências atualizadas em lotes compatíveis; `postcss` seguro é fixado por override e `npm audit` retorna zero vulnerabilidades.
+- Repositório Git privado configurado em `origin`; mudanças validadas seguem por branch e pull request antes de atualizar `origin/main` e a Vercel.
 
 **Entregue entre 16 e 17/07/2026 (produção):**
-- **Investimentos** deixou de ser mock: hook `useInvestments` real (posições, snapshots, proventos, evolução patrimonial, alocação por tipo, KPIs), cadastro de posição (`InvestmentRegistration` cria o snapshot inicial), diálogo de gerenciamento (`InvestmentManageDialog`: editar, atualizar valor, registrar provento, arquivar) e splash "Bem-vindo, Investidor" uma vez por sessão. Migration `202607170003` adicionou `investment_income` (dividendo/JCP/rendimento/juros) e `ticker`/`maturity_date`/`notes`/`archived` em `investments`.
+- **Investimentos** deixou de ser mock: hook `useInvestments` real (posições, snapshots, proventos, evolução patrimonial, alocação por tipo, KPIs), cadastro de posição (`InvestmentRegistration` cria o snapshot inicial), diálogo de gerenciamento (`InvestmentManageDialog`: editar, atualizar valor, registrar provento, arquivar) e aviso compacto não bloqueante uma vez por sessão. Migration `202607170003` adicionou `investment_income` (dividendo/JCP/rendimento/juros) e `ticker`/`maturity_date`/`notes`/`archived` em `investments`.
 - **Mercado (brapi.dev via job externo)**: o frontend **não** chama a brapi — ele só lê a tabela `market_quote_cache` no Supabase (`frontend/lib/market/useMarketQuotes.ts`, leitura direta). Quem alimenta a tabela é `scripts/refresh_market_quotes.py`, rodado pelo GitHub Actions (`.github/workflows/refresh-market-quotes.yml`) a cada 30 min em horário de pregão, 1 ticker por vez (respeita o limite de 1 ativo/requisição do plano gratuito), usando a `service_role` key. Migration `202607170005` criou o cache; `202607170006` deixou a tabela somente-leitura para o app (escrita só via service_role). Painéis de "Cotações da carteira" (tickers das posições) e "Radar de dividendos" (~15 pagadoras curadas da B3, ranqueadas por yield aproximado), com carimbo de "atualizado há X". Secrets no GitHub: `BRAPI_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Metas — editar/excluir** (`GoalManageDialog`) com confirmação; exclusão é soft-delete (`status=cancelled`, preserva histórico). Projeção com **horizonte de simulação customizável** (1/3/5/10/15/20/30 anos) que reage às edições de taxa: mostra tanto o prazo para atingir a meta quanto quanto o dinheiro pode virar no período escolhido.
 - **Aporte/retirada de meta viram lançamento real**: `record_goal_event` (migration `202607170004`) agora também insere em `transactions` (aporte → despesa categoria "Metas"; retirada → receita), refletindo no fluxo de caixa. Antes só atualizava o número guardado na meta.
@@ -532,16 +537,15 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 
 ### 7.2 Próximos passos prioritários
 
-1. Ativar **Leaked Password Protection** e o **Captcha** (hCaptcha) em Supabase → Authentication → Attack Protection — o widget no frontend já existe; falta a Site Key no Vercel (`NEXT_PUBLIC_HCAPTCHA_SITE_KEY`) e a Secret no Supabase, nessa ordem.
-2. Revisar os avisos de performance antigos do Supabase Advisor: chamadas repetidas a `auth.uid()` nas policies e FKs sem índice.
-3. Validar isolamento RLS com duas contas reais para cartões-benefício, metas, eventos, transações e investimentos.
-4. Job mensal que materializa as `recurrence_rules` ativas (inclusive renda/salário) em `transactions` automaticamente — hoje a recorrência é cadastrada mas o lançamento mensal ainda é manual.
-5. Persistir os módulos legados ainda incompletos — perfil, planejamento e garagem — e manter recálculos financeiros no servidor.
-6. Adicionar políticas familiares por `household_id` e papel somente após definir os fluxos de convite e consentimento.
-7. Gerar o cliente TypeScript pelo OpenAPI, padronizar erros e decidir quando cada fluxo deve usar FastAPI em vez de acesso direto ao Supabase; hospedar o FastAPI antes de configurar `NEXT_PUBLIC_API_URL`.
-8. Criar testes unitários do `MoneyInput`/consumo, integração das RPCs e E2E de login, lançamento, benefício, cartão, meta, tour e navegação mobile.
-9. Configurar GitHub Actions para lint, typecheck, build, testes e validação das migrations.
-10. Avaliar plano pago da brapi.dev (ou provedor alternativo) se o cache compartilhado não bastar para manter as 15 cotações sempre frescas.
+1. Ativar **Leaked Password Protection** em Supabase → Authentication → Attack Protection quando o projeto estiver em plano Pro ou superior. O hCaptcha já está ativo em produção.
+2. Validar isolamento RLS com duas contas de teste para cartões-benefício, metas, eventos, transações, investimentos e registros veiculares.
+3. Job mensal que materializa as `recurrence_rules` ativas (inclusive renda/salário) em `transactions` automaticamente — hoje a recorrência é cadastrada mas o lançamento mensal ainda é manual.
+4. Mover recálculos financeiros críticos restantes para views/RPCs no servidor, evitando somas monetárias extensas no navegador.
+5. Implementar convites familiares no servidor com expiração, consentimento e papéis antes de liberar a UI de compartilhamento.
+6. Gerar o cliente TypeScript pelo OpenAPI, padronizar erros e decidir quando cada fluxo deve usar FastAPI em vez de acesso direto ao Supabase; hospedar o FastAPI antes de configurar `NEXT_PUBLIC_API_URL`.
+7. Expandir Playwright para login autenticado, lançamento, benefício, cartão, meta, tour, assessor e navegação mobile usando projeto Supabase de teste.
+8. Adicionar validação automatizada das migrations em banco efêmero no CI.
+9. Avaliar plano pago da brapi.dev (ou provedor alternativo) se o cache compartilhado não bastar para manter as 15 cotações sempre frescas.
 
 ### 7.3 Comandos locais
 

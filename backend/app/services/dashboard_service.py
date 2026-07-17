@@ -4,8 +4,12 @@ from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entities import (
-    Transaction, TransactionType, UberDailyEntry, CreditCard,
-    Investment, InvestmentSnapshot,
+    CreditCard,
+    Investment,
+    InvestmentSnapshot,
+    Transaction,
+    TransactionType,
+    UberDailyEntry,
 )
 
 
@@ -93,6 +97,7 @@ async def get_uber_summary(db: AsyncSession, user_id: UUID, days: int = 30) -> l
             func.sum(UberDailyEntry.kilometers).label("km"),
         )
         .where(UberDailyEntry.user_id == user_id)
+        .where(UberDailyEntry.entry_kind == "uber")
         .group_by(UberDailyEntry.occurred_on)
         .order_by(UberDailyEntry.occurred_on.desc())
         .limit(days)

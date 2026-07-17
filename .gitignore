@@ -1,6 +1,7 @@
 # dependencies and builds
 node_modules/
 .next/
+.next-*/
 dist/
 __pycache__/
 *.py[cod]
@@ -16,6 +17,9 @@ __pycache__/
 *.log
 .vercel/
 .supabase/
+supabase/.temp/
+test-results/
+playwright-report/
 .frontend-git-backup/
 .claude/*.lock
 .claude/settings.local.json

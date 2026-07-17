@@ -12,4 +12,14 @@ uvicorn app.main:app --reload --port 8000
 
 Health check: `GET http://localhost:8000/api/v1/health`.
 
-As rotas de criação retornam dados validados nesta primeira fundação. A persistência será conectada na próxima etapa, após provisionar PostgreSQL e gerar a migration Alembic inicial.
+A API usa o PostgreSQL do Supabase indicado em `DATABASE_URL` e valida o JWT emitido
+pelo Supabase Auth. O schema SQL é versionado em `../supabase/migrations`; não execute
+`Base.metadata.create_all()`, pois autenticação, RLS, views e RPCs são geridas pelas
+migrations.
+
+Para validar localmente sem banco real:
+
+```powershell
+ruff check app tests
+pytest -q
+```

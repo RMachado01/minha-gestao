@@ -42,13 +42,21 @@ Substitua `[senha]` pela senha que criou. Esse é o `DATABASE_URL` do backend (t
    3. `supabase/migrations/202607130001_lgpd_consent_log.sql`
    4. `supabase/migrations/202607150001_security_hardening.sql`
    5. `supabase/migrations/202607160001_goals_and_events.sql`
-   6. `supabase/migrations/202607170001_benefit_cards.sql`
-   7. `supabase/migrations/202607170002_goal_rpc_security.sql`
+   6. `supabase/migrations/202607160002_card_bank_and_benefit_operator.sql`
+   7. `supabase/migrations/202607170001_benefit_cards.sql`
+   8. `supabase/migrations/202607170002_goal_rpc_security.sql`
+   9. `supabase/migrations/202607170003_investment_income.sql`
+   10. `supabase/migrations/202607170004_recurring_income_and_goal_transactions.sql`
+   11. `supabase/migrations/202607170005_market_quote_cache.sql`
+   12. `supabase/migrations/202607170006_market_cache_read_only.sql`
+   13. `supabase/migrations/20260717204221_postgres_rls_performance_hardening.sql`
+   14. `supabase/migrations/20260717204225_persist_vehicle_usage_entries.sql`
 
-A migration 6 separa cartões de crédito e alimentação, cria saldos VR/VA ou flexível e registra compras com débito atômico. Aplique-a antes de publicar este frontend; sem ela, cadastro e compra em cartão alimentação serão recusados com mensagem orientativa.
+As migrations 6–8 completam cartões de crédito/alimentação e RPCs atômicas. As migrations 13–14 otimizam RLS/índices e separam uso pessoal da Garagem dos registros Uber. Aplique todas antes de publicar o frontend; sem a última, Garagem e diário Uber recusam o salvamento com mensagem orientativa.
 3. Não cole apenas o caminho do arquivo: o SQL Editor precisa receber o conteúdo SQL.
 4. Verifique em **Table Editor** que as tabelas foram criadas (`profiles`, `transactions`, `credit_cards`, `vehicles`, `uber_daily_entries`, `categories`, `recurrence_rules`, `investments`, `financial_goals`, `goal_events`, etc.).
 5. Em **Database > Security Advisor**, confirme que não existem alertas `Security Definer View` para as views `vw_*`.
+6. O aviso de `delete_own_account()` como `SECURITY DEFINER` é intencional: a RPC valida `auth.uid()`, usa `search_path` vazio e concede execução somente a `authenticated`.
 
 **Opção B — Supabase CLI (para quem prefere terminal):**
 
@@ -84,6 +92,7 @@ Vá em **Authentication > Policies** (ou **Table Editor > cada tabela > RLS**). 
 5. Em **Authentication > Email Templates**, personalize o template de confirmação se quiser (opcional — o padrão funciona):
    - Subject: `Confirme seu cadastro — Minha Gestão`
    - Body: pode incluir a marca, mas o link `{{ .ConfirmationURL }}` é obrigatório.
+6. Em **Authentication > Attack Protection**, ative **Leaked Password Protection** quando o projeto estiver no plano Pro ou superior. Essa opção não é configurável por migration SQL.
 
 ### 1.6 Trigger para criar perfil automaticamente
 

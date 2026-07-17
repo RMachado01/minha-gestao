@@ -1,6 +1,6 @@
 from datetime import date
 from uuid import UUID
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -10,7 +10,7 @@ from app.core.auth import current_user_id
 from app.db.session import get_db
 from app.models.entities import (
     Category, CreditCard, CreditCardBill, FinancialGoal, GoalEvent, Investment,
-    InvestmentSnapshot, RecurrenceRule, Transaction, UberDailyEntry, Vehicle,
+    InvestmentSnapshot, Profile, RecurrenceRule, Transaction, UberDailyEntry, Vehicle,
 )
 from app.schemas.finance import (
     CategoryCreate, CategoryRead,
@@ -45,7 +45,7 @@ async def health() -> dict[str, str]:
 
 @router.post("/transactions", status_code=status.HTTP_201_CREATED, tags=["transactions"])
 async def create_transaction(payload: TransactionCreate, user_id: UserId, db: Db) -> dict:
-    data = payload.model_dump(exclude={"payment_method"})
+    data = payload.model_dump()
     tx = Transaction(user_id=UUID(user_id), **data)
     db.add(tx)
     await db.commit()
@@ -366,6 +366,10 @@ async def create_uber_daily_entry(payload: UberDailyEntryCreate, user_id: UserId
         other_costs=payload.other_costs,
         net_profit=payload.net_profit,                # computed server-side
         idempotency_key=payload.idempotency_key,
+        entry_kind=payload.entry_kind,
+        hours_worked=payload.hours_worked,
+        odometer_start=payload.odometer_start,
+        odometer_end=payload.odometer_end,
     )
     db.add(entry)
     await db.commit()
@@ -379,10 +383,13 @@ async def list_uber_daily_entries(
     db: Db,
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    entry_kind: Literal["uber", "garage"] | None = Query(default="uber"),
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
     stmt = select(UberDailyEntry).where(UberDailyEntry.user_id == UUID(user_id))
+    if entry_kind:
+        stmt = stmt.where(UberDailyEntry.entry_kind == entry_kind)
     if date_from:
         stmt = stmt.where(UberDailyEntry.occurred_on >= date_from)
     if date_to:
@@ -398,14 +405,21 @@ async def list_uber_daily_entries(
 
 @router.put("/profile", tags=["settings"])
 async def update_profile(payload: ProfileUpdate, user_id: UserId, db: Db) -> dict:
-    from app.models.entities import User
-    result = await db.execute(select(User).where(User.id == UUID(user_id)))
-    user = result.scalar_one_or_none()
-    if user is None:
+    result = await db.execute(select(Profile).where(Profile.id == UUID(user_id)))
+    profile = result.scalar_one_or_none()
+    if profile is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    user.name = payload.full_name
+    for field, value in payload.model_dump().items():
+        setattr(profile, field, value)
     await db.commit()
-    return {"user_id": user_id, **payload.model_dump()}
+    await db.refresh(profile)
+    return {
+        "user_id": user_id,
+        "full_name": profile.full_name,
+        "phone": profile.phone,
+        "state_code": profile.state_code,
+        "currency": profile.currency,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -437,6 +451,7 @@ def _tx_dict(tx: Transaction) -> dict:
         "occurred_on": tx.occurred_on.isoformat(),
         "description": tx.description,
         "category": tx.category,
+        "payment_method": tx.payment_method,
         "category_id": str(tx.category_id) if tx.category_id else None,
         "origin": tx.origin,
         "status": tx.status,
@@ -493,6 +508,10 @@ def _uber_entry_dict(e: UberDailyEntry) -> dict:
         "other_costs": str(e.other_costs),
         "net_profit": str(e.net_profit),
         "idempotency_key": e.idempotency_key,
+        "entry_kind": e.entry_kind,
+        "hours_worked": str(e.hours_worked) if e.hours_worked is not None else None,
+        "odometer_start": str(e.odometer_start) if e.odometer_start is not None else None,
+        "odometer_end": str(e.odometer_end) if e.odometer_end is not None else None,
     }
 
 

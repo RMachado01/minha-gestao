@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (PUBLIC_ROUTES.has(pathname)) return <>{children}</>;
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex min-h-dvh min-w-0 max-w-full overflow-x-clip">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mx-auto w-full max-w-[1400px] px-4 pt-5 sm:px-6 lg:px-8">
@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
             key={pathname}
-            className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-24 pt-2 sm:px-6 lg:px-8"
+            className="mx-auto w-full min-w-0 max-w-[1400px] flex-1 px-4 pb-40 pt-2 sm:px-6 lg:px-8 lg:pb-8"
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}

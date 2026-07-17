@@ -17,16 +17,16 @@ export function TopBar() {
 
   return (
     <header className="flex flex-col gap-4 pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:justify-between sm:gap-3">
         <div className="hidden items-center gap-2 text-sm text-ink-soft sm:flex">
           <CalendarDays className="size-4 text-accent" />
           <span className="capitalize">{currentMonth}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5 sm:gap-2">
           <Link
             href="/lancamentos"
             data-tour-desktop="new-launch"
-            className="btn-primary hidden min-h-11 px-4 lg:inline-flex"
+            className="btn-primary topbar-new-launch min-h-11 px-4"
           >
             <span className="grid size-6 place-items-center rounded-lg bg-white/15">
               <Plus className="size-4" />

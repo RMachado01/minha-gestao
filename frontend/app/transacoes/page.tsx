@@ -179,7 +179,10 @@ export default function TransacoesPage() {
 
   async function handleSaveEdit(updated: Transacao) {
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) {
+      toast("Supabase não configurado.", "error");
+      return false;
+    }
     const { error } = await supabase.from("transactions").update({
       description: updated.descricao.trim(),
       amount: updated.valor,
@@ -192,11 +195,12 @@ export default function TransacoesPage() {
     }).eq("id", updated.id);
     if (error) {
       toast("Não foi possível atualizar a transação.", "error");
-      return;
+      return false;
     }
     setLista((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setEditando(null);
     toast("Transação atualizada com sucesso!", "success");
+    return true;
   }
 
   return (
@@ -425,17 +429,17 @@ function EditPanel({
   onCancel,
 }: {
   transacao: Transacao;
-  onSave: (t: Transacao) => void;
+  onSave: (t: Transacao) => Promise<boolean>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<Transacao>(transacao);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setSaving(true);
+    const success = await onSave(form);
+    if (!success) setSaving(false);
   }
 
   return (
@@ -581,11 +585,9 @@ function EditPanel({
           </label>
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" className="btn-primary flex-1">
-              {saved ? (
-                <>
-                  <Check className="size-4" /> Salvo
-                </>
+            <button type="submit" className="btn-primary flex-1" disabled={saving}>
+              {saving ? (
+                <><LoaderCircle className="size-4 animate-spin" /> Salvando...</>
               ) : (
                 <>
                   <Check className="size-4" /> Salvar alterações
