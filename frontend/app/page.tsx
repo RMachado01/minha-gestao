@@ -27,6 +27,7 @@ import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { CHART } from "@/components/charts/chartTheme";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DailyBriefing } from "@/components/advisor/DailyBriefing";
 
 import { formatBRL, formatBRLCompact, formatPercent } from "@/lib/format";
 import { useFinanceSummary } from "@/lib/supabase/useFinanceSummary";
@@ -148,6 +149,11 @@ export default function VisaoGeralPage() {
   const maior = Math.max(...saldos);
   const totalVencimentos = proximosVencimentos.reduce((acc, v) => acc + v.valor, 0);
   const metaProgresso = goal && goal.targetAmount > 0 ? goal.currentAmount / goal.targetAmount : 0;
+  const urgentItems = proximosVencimentos.filter((item) => {
+    const days = diasAte(item.vence);
+    return days >= 0 && days <= 3;
+  });
+  const urgentTotal = urgentItems.reduce((sum, item) => sum + item.valor, 0);
 
   return (
     <div className="flex flex-col gap-5 py-2">
@@ -156,22 +162,20 @@ export default function VisaoGeralPage() {
         {/* ---------- HERO: Saldo do mês ---------- */}
         <GlassCard
           variant="hero"
-          className="col-span-12 flex flex-col gap-6 lg:col-span-8"
+          className="col-span-12 flex flex-col gap-6 overflow-hidden p-6 lg:col-span-8 lg:p-7"
         >
-          <span className="hero-orb -right-16 -top-16 h-72 w-72" aria-hidden="true" />
-          <span className="hero-orb hero-orb-2 -bottom-20 left-1/3 h-64 w-64" aria-hidden="true" />
           <section aria-labelledby="hero-saldo" className="flex h-full flex-col gap-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
                   id="hero-saldo"
-                  className="text-xs font-medium uppercase tracking-[0.2em] text-ink-muted"
+                  className="eyebrow"
                 >
                   Saldo do mês
                 </h2>
-                <p className="mt-1 text-sm capitalize text-ink-soft">{MONTH_YEAR.format(new Date())}</p>
+                <p className="mt-2 text-sm capitalize text-ink-soft">{MONTH_YEAR.format(new Date())}</p>
               </div>
-              <span className="grid size-11 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-pos)_14%,transparent)] text-pos">
+              <span className="grid size-11 place-items-center rounded-xl border border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-pos)_9%,var(--color-surface))] text-pos">
                 <Wallet className="h-5 w-5" strokeWidth={2} />
               </span>
             </div>
@@ -179,14 +183,14 @@ export default function VisaoGeralPage() {
             <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
               <p
                 aria-label={`Saldo do mês: ${formatBRL(fluxoKpis.saldo)}`}
-                className="tnum min-w-0 shrink break-words bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-pos)] bg-clip-text text-[2.75rem] font-semibold leading-none tracking-tight text-transparent sm:text-6xl"
+                className="tnum min-w-0 shrink break-words text-[2.75rem] font-semibold leading-none tracking-[-.055em] text-ink sm:text-6xl"
               >
                 <AnimatedValue target={fluxoKpis.saldo} format={formatBRL} durationMs={900} />
               </p>
               <TrendBadge value={fluxoKpis.trendSaldo} className="shrink-0" />
             </div>
 
-            <p className="max-w-md text-sm text-ink-soft">
+            <p className="max-w-lg text-sm leading-6 text-ink-soft">
               {fluxoKpis.trendSaldo >= 0 ? "Saldo em alta" : "Saldo em queda"}:{" "}
               <span className={`tnum font-medium ${fluxoKpis.trendSaldo >= 0 ? "text-pos" : "text-neg"}`}>
                 {formatPercent(fluxoKpis.trendSaldo, true)}
@@ -217,10 +221,20 @@ export default function VisaoGeralPage() {
           </section>
         </GlassCard>
 
-        {/* ---------- Rail de KPIs ---------- */}
+        <DailyBriefing
+          balance={fluxoKpis.saldo}
+          savingsRate={fluxoKpis.economiaPct}
+          balanceTrend={fluxoKpis.trendSaldo}
+          urgentBills={urgentItems.length}
+          urgentTotal={urgentTotal}
+          cardUsage={usoCartoes}
+          hasGoal={Boolean(goal)}
+        />
+
+        {/* ---------- Indicadores de apoio ---------- */}
         <section
           aria-label="Indicadores do mês"
-          className="col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-4 lg:grid-cols-1"
+          className="col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-3"
         >
           <KpiCard
             label="Entradas"
@@ -261,7 +275,7 @@ export default function VisaoGeralPage() {
 
         {/* ---------- Destaques: metas e cartões ---------- */}
         <Link href="/metas" className="col-span-12 sm:col-span-6">
-          <GlassCard variant="liquid" interactive className="h-full">
+          <GlassCard variant="default" interactive className="h-full">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-soft">Sonhos e metas</span>
               <span className="grid size-9 place-items-center rounded-xl text-accent-2 bg-[color-mix(in_oklab,var(--color-accent-2)_16%,transparent)]">
@@ -286,7 +300,7 @@ export default function VisaoGeralPage() {
         </Link>
 
         <Link href="/cartoes" className="col-span-12 sm:col-span-6">
-          <GlassCard variant="liquid" interactive className="h-full">
+          <GlassCard variant="default" interactive className="h-full">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-soft">Cartões de crédito</span>
               <span className="grid size-9 place-items-center rounded-xl text-warn bg-[color-mix(in_oklab,var(--color-warn)_16%,transparent)]">
@@ -310,7 +324,7 @@ export default function VisaoGeralPage() {
         </Link>
 
         {/* ---------- Próximos vencimentos ---------- */}
-        <GlassCard variant="liquid" className="col-span-12">
+        <GlassCard variant="default" className="col-span-12">
           <section aria-labelledby="venc-titulo">
             <SectionHeader
               title="Próximos vencimentos"

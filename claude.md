@@ -489,6 +489,9 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 
 - Dashboard geral, fluxo de caixa, gastos, investimentos, cartões e Uber com estados vazios honestos para contas novas; dados de demonstração permanecem isolados e não aparecem em sessões autenticadas.
 - Tema claro/escuro persistido, shell responsivo, superfícies sólidas no conteúdo e Liquid Glass restrito a navegação/controles.
+- Direção visual **Quiet Intelligence** documentada em `design-system/minha-gest-o/MASTER.md`: fundo neutro quente no claro, verde profundo no escuro, cartões de dados sólidos, vidro apenas no shell/sheets e lilás reservado a IA/projeções.
+- Tipografia editorial `Newsreader` aplicada somente a títulos e briefings, com Geist na interface e números tabulares; raios, sombras, foco e movimento seguem tokens globais de 150–320 ms.
+- Dashboard reorganizado em hierarquia de decisão: saldo e histórico têm prioridade, KPIs viraram indicadores de apoio e o **Briefing de hoje** explica a situação, a origem dos dados e a próxima melhor ação.
 - Paleta de gráficos baseada em CSS variables, com contraste próprio para temas claro e escuro; `theme-color` do navegador acompanha o tema.
 - Cabeçalhos de página reutilizáveis e navegação desktop agrupada; mobile usa barra inferior de cinco destinos.
 - Formulário de receitas e despesas persistido na Supabase; VR/VA/flexível aparece somente como meio de pagamento de uma despesa.
@@ -504,14 +507,14 @@ Previsto  →  Agendado  →  Vence em breve  →  Pago
 - Módulo **Sonhos e Metas** com objetivo, descrição, valor-alvo, saldo atual, aporte fixo ou percentual da renda, data desejada e cenário preferido.
 - Projeções comparativas para poupança, CDB, Tesouro Direto, ações/dividendos e taxa personalizada; hipóteses são editáveis e apresentadas como simulação bruta, não promessa de retorno.
 - Linha do tempo de aportes, retiradas e notas com atualização atômica do progresso via RPC.
-- Assessor financeiro global fica fixo no shell autenticado e responde, em qualquer aba, sobre saldo, comparação mensal, taxa de economia, categorias, faturas, VR/VA, reserva, investimentos e prazo das metas usando somente dados reais da conta. Hoje é um motor contextual local baseado em regras, sem LLM e sem promessa de aconselhamento profissional.
+- **Inteligência da conta** fica fixa no shell autenticado e responde, em qualquer aba, sobre saldo, comparação mensal, taxa de economia, categorias, faturas, VR/VA, reserva, investimentos e prazo das metas usando somente dados reais. O painel informa quantos lançamentos e qual período sustentam a leitura; hoje é um motor contextual local baseado em regras, sem LLM e sem promessa de aconselhamento profissional.
 - Cadastro de cartões persistido na Supabase; calendário, status e histórico consolidado de 12 meses usam faturas e lançamentos reais, sem séries mockadas.
 - Cartões existentes podem ser editados ou arquivados com confirmação; a remoção preserva compras e faturas históricas vinculadas.
-- A cor de destaque personalizada controla gradientes de botões, navegação e estados interativos por meio de tokens derivados.
+- A cor de destaque personalizada controla botões sólidos, navegação e estados interativos por meio de tokens derivados; gradientes decorativos não são usados como linguagem padrão de ação.
 - Cadastro de veículos e diário Uber com cálculo automático de energia/combustível, custo, lucro, lucro/km e lucro/hora; distância pode ser informada diretamente ou por odômetro inicial/final. O painel mensal/anual agrega registros reais, compara o período anterior e atualiza logo após salvar.
 - Planejamento deixou de usar a lista demonstrativa: consulta despesas e compras-benefício reais, classifica vencidos/próximos/agendados e permite marcar o lançamento como pago com confirmação do banco.
 - Cadastro, confirmação de e-mail, login, logout e callback Supabase com `@supabase/ssr` e `proxy.ts` do Next.js 16; confirmação encerra a sessão e exige login explícito.
-- Tour guiado de cinco etapas no primeiro login usa spotlight e âncoras reais em visão geral, novo lançamento, cartões, metas e configurações; no mobile abre o drawer quando o alvo está em `Mais`.
+- Tour guiado de cinco etapas no primeiro login usa spotlight e âncoras reais em visão geral, novo lançamento, cartões, metas e configurações; no mobile abre o drawer quando o alvo está em `Mais` e apresenta a Inteligência global com a nomenclatura atual.
 - Tour, assessor e menu mobile possuem Escape, gestão/restauração de foco e respeito à safe-area; login e cadastro são verificados sem overflow em desktop e mobile.
 - Configurações de perfil persistem nome, telefone, UF e moeda; exportação LGPD abrange 16 tabelas e exclusão nunca simula sucesso em caso de erro. Grupo familiar permanece identificado honestamente como recurso planejado até existir convite seguro no servidor.
 - Garagem, cadastro de veículos e diário Uber persistem dados reais. Registros pessoais e de trabalho são separados por `entry_kind`; horas e odômetros são armazenados e a view Uber ignora uso pessoal.

@@ -44,13 +44,13 @@ export function MobileNav() {
 
   return (
     <>
-      <nav className="liquid-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.4rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
+      <nav className="shell-glass fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 rounded-[1.25rem] p-1.5 pb-[max(.375rem,env(safe-area-inset-bottom))] lg:hidden" aria-label="Navegação principal">
         {ITEMS.map((item) => {
           const { href, label, icon: Icon } = item;
           const primary = "primary" in item && item.primary;
           const tour = "tour" in item ? item.tour : undefined;
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return <Link key={href} href={href} data-tour-mobile={tour} className={cn("relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium transition-all", primary && "-mt-5 min-h-14 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-3)] text-white shadow-xl shadow-[var(--color-accent)]/25", active ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)] text-ink" : "text-ink-soft hover:text-ink")}><Icon className={cn("h-4 w-4", primary ? "size-5 text-white" : active ? "text-accent" : "text-ink-muted")} />{label}</Link>;
+          return <Link key={href} href={href} data-tour-mobile={tour} className={cn("relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-medium transition-colors", primary && "-mt-5 min-h-14 rounded-full bg-accent text-white shadow-[0_14px_32px_-16px_var(--color-accent)]", active ? primary ? "text-white" : "bg-[color-mix(in_oklab,var(--color-accent)_13%,transparent)] text-ink" : "text-ink-soft hover:text-ink")}><Icon className={cn("h-4 w-4", primary ? "size-5 text-white" : active ? "text-accent" : "text-ink-muted")} />{label}</Link>;
         })}
         <button type="button" data-tour-mobile="more" onClick={() => setOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium text-ink-soft transition hover:text-ink" aria-label="Abrir todas as funções"><Menu className="size-4 text-ink-muted" />Mais</button>
       </nav>
@@ -58,7 +58,7 @@ export function MobileNav() {
       <AnimatePresence>
         {open && <motion.div className="fixed inset-0 z-[80] bg-black/55 backdrop-blur-sm lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
           <motion.section role="dialog" aria-modal="true" aria-label="Todas as funções" data-lenis-prevent className="liquid-glass-hero absolute inset-x-0 bottom-0 max-h-[86dvh] overflow-y-auto rounded-t-[2rem] p-5 pb-[max(7rem,calc(2rem+env(safe-area-inset-bottom)))]" initial={reduceMotion ? { opacity: 0 } : { y: "100%" }} animate={{ y: 0, opacity: 1 }} exit={reduceMotion ? { opacity: 0 } : { y: "100%" }} transition={{ type: "spring", stiffness: 360, damping: 34 }} onClick={(event) => event.stopPropagation()}>
-            <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-[var(--color-bg)]/70 py-2 backdrop-blur-xl"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">Navegação</p><h2 className="mt-1 text-xl font-semibold text-ink">Todas as funções</h2></div><button type="button" onClick={() => setOpen(false)} className="grid size-10 place-items-center rounded-xl bg-white/5 text-ink-soft" aria-label="Fechar menu"><X className="size-5" /></button></div>
+            <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-[var(--color-surface-2)]/90 py-2 backdrop-blur-xl"><div><p className="eyebrow">Navegação</p><h2 className="display-font mt-1 text-2xl font-medium text-ink">Todas as funções</h2></div><button type="button" onClick={() => setOpen(false)} className="grid size-11 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] text-ink-soft" aria-label="Fechar menu"><X className="size-5" /></button></div>
             <div className="space-y-5">
               {NAV_GROUPS.map((group) => {
                 const groupItems = visibleItems.filter((item) => item.group === group.id);

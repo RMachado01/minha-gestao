@@ -4,18 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
-  Bot,
   CalendarDays,
   Check,
   CircleDollarSign,
   Clock3,
   Goal,
   LoaderCircle,
-  MessageCircleQuestion,
   Plus,
-  Send,
+  Radar,
   Settings2,
-  Sparkles,
   Target,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -27,7 +24,6 @@ import { useToast } from "@/components/ui/Toast";
 import { formatBRL } from "@/lib/format";
 import { GoalManageDialog } from "@/components/goals/GoalManageDialog";
 import {
-  answerFinancialQuestion,
   averageIncome,
   formatDuration,
   futureValue,
@@ -51,13 +47,6 @@ interface RawGoal extends Omit<FinancialGoal, "target_amount" | "current_amount"
 
 interface RawEvent extends Omit<GoalEvent, "amount"> { amount: number | string | null }
 interface RawTransaction extends Omit<TransactionSummary, "amount"> { amount: number | string }
-
-const quickQuestions = [
-  "Qual é o meu saldo?",
-  "Onde estou gastando mais?",
-  "Quanto vou guardar por mês?",
-  "Quando alcanço esta meta?",
-];
 
 function normalizeGoal(goal: RawGoal): FinancialGoal {
   return {
@@ -84,7 +73,6 @@ export default function GoalsPage() {
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [events, setEvents] = useState<GoalEvent[]>([]);
   const [transactions, setTransactions] = useState<TransactionSummary[]>([]);
-  const [investmentTotal, setInvestmentTotal] = useState(0);
   const [selectedId, setSelectedId] = useState("");
   const [contributionMode, setContributionMode] = useState<ContributionMode>("fixed");
   const [preferredScenario, setPreferredScenario] = useState<ScenarioId>("cdb");
@@ -96,10 +84,6 @@ export default function GoalsPage() {
   const [eventSaving, setEventSaving] = useState(false);
   const [error, setError] = useState("");
   const [managedGoal, setManagedGoal] = useState<FinancialGoal | null>(null);
-  const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<string[]>([
-    "Olá! Eu uso somente os dados da sua conta para ajudar com saldo, gastos, aportes e prazos das metas. O que você quer analisar?",
-  ]);
 
   const selectedGoal = goals.find((goal) => goal.id === selectedId) ?? goals[0] ?? null;
   const incomeAverage = useMemo(() => averageIncome(transactions), [transactions]);
@@ -121,11 +105,10 @@ export default function GoalsPage() {
         return;
       }
 
-      const [goalsResult, eventsResult, transactionsResult, investmentsResult] = await Promise.all([
+      const [goalsResult, eventsResult, transactionsResult] = await Promise.all([
         supabase.from("financial_goals").select("*").neq("status", "cancelled").order("created_at", { ascending: false }),
         supabase.from("goal_events").select("*").order("occurred_on", { ascending: false }).limit(150),
         supabase.from("transactions").select("type,amount,occurred_on,category").order("occurred_on", { ascending: false }).limit(1000),
-        supabase.from("investments").select("invested_amount"),
       ]);
 
       if (goalsResult.error) {
@@ -144,9 +127,6 @@ export default function GoalsPage() {
       }
       if (!transactionsResult.error) {
         setTransactions(((transactionsResult.data ?? []) as RawTransaction[]).map((item) => ({ ...item, amount: Number(item.amount) })));
-      }
-      if (!investmentsResult.error) {
-        setInvestmentTotal((investmentsResult.data ?? []).reduce((sum, item) => sum + Number(item.invested_amount), 0));
       }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
@@ -250,14 +230,6 @@ export default function GoalsPage() {
     setEventSaving(false);
   }
 
-  function ask(rawQuestion?: string) {
-    const text = (rawQuestion ?? question).trim();
-    if (!text) return;
-    const response = answerFinancialQuestion(text, transactions, goals, selectedGoal, investmentTotal);
-    setMessages((current) => [...current, `Você: ${text}`, response]);
-    setQuestion("");
-  }
-
   const projections = selectedGoal ? INVESTMENT_SCENARIOS.map((scenario) => {
     const rate = scenarioRate(selectedGoal, scenario.id, customRate);
     const months = monthsToTarget(selectedGoal.current_amount, selectedGoal.target_amount, selectedMonthly, rate);
@@ -277,7 +249,7 @@ export default function GoalsPage() {
       <BentoGrid>
         <GlassCard variant="hero" className="col-span-12 lg:col-span-7">
           <div className="mb-5 flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-accent/10 text-accent"><Sparkles className="size-5" /></span>
+            <span className="grid size-11 place-items-center rounded-xl bg-accent/10 text-accent"><Goal className="size-5" /></span>
             <div><h2 className="font-semibold text-ink">Criar um novo sonho</h2><p className="text-sm text-ink-muted">Dê um valor e uma regra de aporte ao seu objetivo.</p></div>
           </div>
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={createGoal}>
@@ -305,14 +277,16 @@ export default function GoalsPage() {
           </form>
         </GlassCard>
 
-        <GlassCard variant="liquid" className="col-span-12 lg:col-span-5">
-          <div className="flex items-center gap-3"><Bot className="size-5 text-accent" /><div><h2 className="font-semibold text-ink">Consultor da sua conta</h2><p className="text-xs text-ink-muted">Respostas calculadas com seus dados registrados</p></div></div>
-          <div className="mt-4 max-h-72 space-y-3 overflow-y-auto pr-1" aria-live="polite">
-            {messages.map((message, index) => <div key={`${index}-${message.slice(0, 12)}`} className={`rounded-2xl p-3 text-sm leading-relaxed ${message.startsWith("Você:") ? "ml-8 bg-accent/10 text-ink" : "mr-3 surface-card text-ink-soft"}`}>{message}</div>)}
+        <GlassCard variant="default" className="ai-surface col-span-12 flex flex-col lg:col-span-5">
+          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[var(--ai-surface)] ai-accent"><Radar className="size-5" /></span><div><p className="eyebrow ai-accent">Inteligência contextual</p><h2 className="mt-1 font-semibold text-ink">Pergunte de qualquer tela</h2></div></div>
+          <p className="mt-5 text-sm leading-6 text-ink-soft">A inteligência da conta agora fica disponível em todo o sistema. Ela cruza lançamentos, cartões, investimentos e esta meta selecionada sem inventar valores.</p>
+          <div className="mt-5 grid gap-2 text-sm text-ink-soft">
+            <p className="rounded-xl border border-[var(--color-line)] p-3">“Quando alcanço esta meta no aporte atual?”</p>
+            <p className="rounded-xl border border-[var(--color-line)] p-3">“Qual cenário exige menos esforço mensal?”</p>
+            <p className="rounded-xl border border-[var(--color-line)] p-3">“Minha reserva permite aumentar o aporte?”</p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">{quickQuestions.map((item) => <button key={item} type="button" onClick={() => ask(item)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs text-ink-soft hover:border-accent hover:text-ink">{item}</button>)}</div>
-          <div className="relative mt-4"><input className="field pr-12" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); ask(); } }} placeholder="Pergunte sobre sua conta..." aria-label="Pergunta para o consultor" /><button type="button" onClick={() => ask()} className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl bg-accent text-white" aria-label="Enviar pergunta"><Send className="size-4" /></button></div>
-          <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-ink-muted"><MessageCircleQuestion className="mt-0.5 size-3.5 shrink-0" />O consultor não movimenta dinheiro e não substitui orientação financeira profissional.</p>
+          <button type="button" onClick={() => window.dispatchEvent(new Event("mg-open-advisor"))} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color-mix(in_oklab,var(--ai-accent)_35%,var(--color-line))] px-4 py-3 text-sm font-semibold ai-accent transition-colors hover:bg-[var(--ai-surface)]"><Radar className="size-4" />Abrir inteligência da conta</button>
+          <p className="mt-3 text-[11px] leading-5 text-ink-muted">Projeções são educacionais, usam hipóteses editáveis e não garantem retorno.</p>
         </GlassCard>
       </BentoGrid>
 

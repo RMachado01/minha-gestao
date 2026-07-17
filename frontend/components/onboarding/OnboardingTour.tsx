@@ -9,7 +9,7 @@ const STEPS = [
   { id: "overview", title: "Sua visão geral", description: "Aqui você acompanha saldo, receitas, gastos e próximos compromissos. A conta começa vazia: tudo vem dos seus lançamentos." },
   { id: "new-launch", title: "Comece por um lançamento", description: "Use este botão para registrar uma receita ou despesa. Compras em cartão de crédito ou VR/VA podem ser vinculadas ao cartão correto." },
   { id: "cards", title: "Cartões e vencimentos", description: "Cadastre cartões de crédito e alimentação. Faturas e saldos ficam organizados nesta área." },
-  { id: "goals", title: "Sonhos, metas e projeções", description: "Defina objetivos, simule aportes e consulte análises do seu assessor financeiro." , drawer: true },
+  { id: "goals", title: "Sonhos, metas e projeções", description: "Defina objetivos, simule aportes e use a Inteligência da conta em qualquer tela para interpretar seus dados." , drawer: true },
   { id: "settings", title: "Perfil e preferências", description: "Ajuste tema, dados pessoais e modo motorista. No celular, todas as demais funções ficam no menu Mais.", drawer: true },
 ] as const;
 
@@ -140,10 +140,10 @@ export function OnboardingTour() {
     <div className="pointer-events-auto fixed inset-0 z-[100]" aria-live="polite">
       {rect && <div aria-hidden className="pointer-events-none fixed rounded-2xl ring-4 ring-accent ring-offset-4 ring-offset-transparent transition-all duration-300" style={{ top: rect.top - 4, left: rect.left - 4, width: rect.width + 8, height: rect.height + 8, boxShadow: "0 0 0 9999px rgb(0 0 0 / .58), 0 12px 40px rgb(0 0 0 / .3)" }} />}
       {!rect && <div aria-hidden className="pointer-events-none fixed inset-0 bg-black/60 backdrop-blur-sm" />}
-      <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description" className="ios-glass fixed inset-x-4 bottom-[6.5rem] z-[102] max-h-[70dvh] overflow-y-auto rounded-[1.75rem] p-5 shadow-2xl outline-none sm:inset-x-auto sm:bottom-auto sm:w-[380px] sm:p-6" style={tooltipStyle}>
-        <div className="flex items-start justify-between gap-4"><span className="grid size-11 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-accent)_18%,transparent)] text-accent"><Compass className="size-5" /></span><button type="button" onClick={finish} className="grid size-9 place-items-center rounded-xl text-ink-muted hover:bg-white/5 hover:text-ink" aria-label="Pular tour"><X className="size-4" /></button></div>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[.18em] text-accent">Passo {step + 1} de {STEPS.length}</p>
-        <h2 id="onboarding-title" className="mt-2 text-xl font-semibold tracking-tight text-ink">{current.title}</h2>
+      <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description" className="ios-glass fixed inset-x-4 bottom-[6.5rem] z-[102] max-h-[70dvh] overflow-y-auto rounded-[1.5rem] p-5 shadow-2xl outline-none sm:inset-x-auto sm:bottom-auto sm:w-[380px] sm:p-6" style={tooltipStyle}>
+        <div className="flex items-start justify-between gap-4"><span className="grid size-11 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)] text-accent"><Compass className="size-5" /></span><button type="button" onClick={finish} className="grid size-11 place-items-center rounded-xl text-ink-muted hover:bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] hover:text-ink" aria-label="Pular tour"><X className="size-4" /></button></div>
+        <p className="eyebrow mt-5 text-accent">Passo {step + 1} de {STEPS.length}</p>
+        <h2 id="onboarding-title" className="display-font mt-2 text-2xl font-medium tracking-[-.025em] text-ink">{current.title}</h2>
         <p id="onboarding-description" className="mt-2 text-sm leading-6 text-ink-soft">{current.description}</p>
         <div className="mt-5 flex items-center gap-2" aria-hidden>{STEPS.map((item, index) => <span key={item.id} className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-accent" : "bg-[var(--color-line-strong)]"}`} />)}</div>
         <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => step === 0 ? finish() : setStep((value) => value - 1)} className="inline-flex items-center gap-1 px-2 py-2 text-sm font-medium text-ink-muted hover:text-ink">{step === 0 ? "Pular" : <><ArrowLeft className="size-4" />Voltar</>}</button><button type="button" onClick={() => isLast ? finish() : setStep((value) => value + 1)} className="btn-primary">{isLast ? <><Check className="size-4" />Concluir</> : <>Próximo<ArrowRight className="size-4" /></>}</button></div>
