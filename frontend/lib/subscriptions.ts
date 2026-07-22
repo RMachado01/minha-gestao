@@ -38,6 +38,16 @@ export const SUBSCRIPTION_BRANDS: SubscriptionBrand[] = [
   { label: "LinkedIn", color: "#0A66C2", textColor: "#ffffff", domain: "linkedin.com", keywords: ["linkedin"] },
   { label: "PlayStation Plus", color: "#003791", textColor: "#ffffff", domain: "playstation.com", keywords: ["playstation", "ps plus", "psn"] },
   { label: "Twitch", color: "#9146FF", textColor: "#ffffff", domain: "twitch.tv", keywords: ["twitch"] },
+  { label: "Crunchyroll", color: "#F47521", textColor: "#ffffff", domain: "crunchyroll.com", keywords: ["crunchyroll"] },
+  { label: "Star+", color: "#1A1A2E", textColor: "#ffffff", domain: "starplus.com", keywords: ["star+", "star plus"] },
+  { label: "Mercado Livre", color: "#FFE600", textColor: "#2D3277", domain: "mercadolivre.com.br", keywords: ["mercado livre", "mercadolivre", "meli+"] },
+  { label: "Duolingo", color: "#58CC02", textColor: "#ffffff", domain: "duolingo.com", keywords: ["duolingo"] },
+  { label: "Dropbox", color: "#0061FF", textColor: "#ffffff", domain: "dropbox.com", keywords: ["dropbox"] },
+  { label: "GitHub", color: "#181717", textColor: "#ffffff", domain: "github.com", keywords: ["github"] },
+  { label: "Kindle", color: "#FF9900", textColor: "#111111", domain: "amazon.com", keywords: ["kindle"] },
+  { label: "TIM", color: "#004691", textColor: "#ffffff", domain: "tim.com.br", keywords: ["tim "] },
+  { label: "Vivo", color: "#660099", textColor: "#ffffff", domain: "vivo.com.br", keywords: ["vivo"] },
+  { label: "Claro", color: "#DA291C", textColor: "#ffffff", domain: "claro.com.br", keywords: ["claro"] },
 ];
 
 /** Remove acentos e normaliza para comparação de palavras-chave. */

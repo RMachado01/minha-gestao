@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronDown, Database, LoaderCircle, Radar, RefreshCw, Send, X } from "lucide-react";
 import { answerFinancialQuestion, computeInsights, type FinancialGoal, type Insight, type TransactionSummary } from "@/lib/goals";
+import { askAdvisorAI, buildAdvisorContext } from "@/lib/advisor/askAI";
 import { createClient } from "@/lib/supabase/client";
 import { SelectField } from "@/components/forms/SelectField";
 
@@ -43,6 +44,7 @@ export function FinancialAdvisorWidget() {
   const [data, setData] = useState<AccountData>(EMPTY);
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [question, setQuestion] = useState("");
+  const [thinking, setThinking] = useState(false);
   const [messages, setMessages] = useState<AdvisorMessage[]>([
     { role: "assistant", text: "Posso explicar seus gastos, saldo, cartões, reserva e metas usando somente os dados cadastrados nesta conta." },
   ]);
@@ -130,19 +132,28 @@ export function FinancialAdvisorWidget() {
     [loaded, data],
   );
 
-  function ask(value = question) {
-    const text = value.trim();
-    if (!text || loading) return;
-    const answer = answerFinancialQuestion(text, data.transactions, data.goals, selectedGoal, data.investmentTotal, {
+  function ruleBasedAnswer(text: string): string {
+    return answerFinancialQuestion(text, data.transactions, data.goals, selectedGoal, data.investmentTotal, {
       creditCardBills: data.creditCardBills,
       benefitBalance: data.benefitBalance,
     });
-    const nextMessages: AdvisorMessage[] = [
-      { role: "user", text },
-      { role: "assistant", text: answer },
-    ];
-    setMessages((current) => [...current, ...nextMessages].slice(-8));
+  }
+
+  async function ask(value = question) {
+    const text = value.trim();
+    if (!text || loading || thinking) return;
+    // Mostra a pergunta na hora e um estado "pensando".
+    setMessages((current) => [...current, { role: "user" as const, text }].slice(-8));
     setQuestion("");
+    setThinking(true);
+
+    // Tenta a IA (Groq, via rota server-side); se indisponível, usa as regras.
+    const context = buildAdvisorContext(data);
+    const aiAnswer = await askAdvisorAI(text, context);
+    const answer = aiAnswer ?? ruleBasedAnswer(text);
+
+    setMessages((current) => [...current, { role: "assistant" as const, text: answer }].slice(-8));
+    setThinking(false);
   }
 
   function toggle() {
@@ -225,11 +236,12 @@ export function FinancialAdvisorWidget() {
 
             <div className="border-t border-[var(--color-line)] p-4">
               <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                {QUICK_QUESTIONS.map((item) => <button key={item} type="button" onClick={() => ask(item)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-[var(--ai-accent)]">{item}</button>)}
+                {QUICK_QUESTIONS.map((item) => <button key={item} type="button" disabled={thinking} onClick={() => void ask(item)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-[var(--ai-accent)] disabled:opacity-50">{item}</button>)}
               </div>
+              {thinking && <p className="mb-2 flex items-center gap-2 text-xs text-ink-muted"><LoaderCircle className="size-3.5 animate-spin" />Analisando seus dados...</p>}
               <div className="relative">
-                <input className="field pr-12" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); ask(); } }} placeholder="Pergunte sobre sua conta..." aria-label="Pergunta à inteligência da conta" />
-                <button type="button" onClick={() => ask()} className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl bg-[var(--ai-accent)] text-white" aria-label="Enviar"><Send className="size-4" /></button>
+                <input className="field pr-12" value={question} disabled={thinking} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void ask(); } }} placeholder="Pergunte sobre sua conta..." aria-label="Pergunta à inteligência da conta" />
+                <button type="button" disabled={thinking} onClick={() => void ask()} className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl bg-[var(--ai-accent)] text-white disabled:opacity-50" aria-label="Enviar">{thinking ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}</button>
               </div>
               <p className="mt-2 text-[10px] leading-4 text-ink-muted">Simulações não garantem retorno nem substituem orientação profissional. <Link href="/metas" className="font-semibold ai-accent">Abrir metas</Link></p>
             </div>

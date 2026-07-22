@@ -178,9 +178,10 @@ function RecorrenciaRow({ item, onManage }: { item: RecurrenceRule; onManage: ()
   const isInstallment = item.type === "installment" && item.current_installment != null && item.total_installments != null;
   const progress = isInstallment ? (item.current_installment! / item.total_installments!) : 0;
 
-  // Assinaturas ganham o logo real do serviço (Spotify, Netflix…) quando
-  // reconhecido pela descrição; os demais tipos usam o ícone do tipo.
-  const brand = item.type === "subscription" ? detectSubscriptionBrand(item.description) : null;
+  // Qualquer recorrência cuja descrição contenha uma marca conhecida
+  // (Spotify, Netflix, iFood…) ganha o logo real do serviço, independente do
+  // tipo; quando não há marca reconhecida, usa o ícone do tipo.
+  const brand = detectSubscriptionBrand(item.description);
   const avatar = TIPO_AVATAR[item.type];
   const AvatarIcon = avatar.icon;
 
