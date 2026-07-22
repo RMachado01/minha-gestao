@@ -185,9 +185,13 @@ html[data-theme="light"] body::before {
 }
 
 .ai-surface {
-  background: linear-gradient(145deg, var(--ai-surface), color-mix(in oklab, var(--color-surface) 94%, var(--ai-accent)));
-  border: 1px solid color-mix(in oklab, var(--ai-accent) 30%, var(--color-line));
-  box-shadow: var(--shadow-card);
+  /* Base opaca (surface-2) + brilho sutil de IA no canto, para o popup do
+     agente ficar legível sem o conteúdo da página vazando por trás. */
+  background:
+    linear-gradient(150deg, color-mix(in oklab, var(--ai-accent) 12%, transparent), transparent 55%),
+    var(--color-surface-2);
+  border: 1px solid color-mix(in oklab, var(--ai-accent) 26%, var(--color-line));
+  box-shadow: var(--shadow-elevated);
 }
 .ai-accent { color: var(--ai-accent); }
 .ai-proof {
