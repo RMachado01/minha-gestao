@@ -23,6 +23,7 @@ import { CardRegistration } from "@/components/cards/CardRegistration";
 import { CardManagementDialog } from "@/components/cards/CardManagementDialog";
 import { CardBrandMark } from "@/components/cards/CardBrandMark";
 import { RaiseCelebration } from "@/components/ui/RaiseCelebration";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { BANKS, getBrand } from "@/lib/brands";
 import { formatBRL, formatPercent, variacao } from "@/lib/format";
 import type { Cartao } from "@/lib/data/empty";
@@ -101,6 +102,15 @@ function CartaoItem({ cartao, record, delay, onEdit, onDelete }: { cartao: Carta
           <div className="relative flex h-full flex-col justify-between">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
+                {bancoIdentity?.domain && (
+                  <BrandLogo
+                    label={bancoIdentity.label}
+                    domain={bancoIdentity.domain}
+                    color={bancoIdentity.color}
+                    textColor={bancoIdentity.textColor}
+                    size={28}
+                  />
+                )}
                 {/* Chip */}
                 <span
                   aria-hidden
