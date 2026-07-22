@@ -15,6 +15,7 @@ import {
   Check,
   LoaderCircle,
   RefreshCw,
+  FileUp,
 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -22,6 +23,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MoneyInput } from "@/components/forms/MoneyInput";
+import { ImportStatementDialog } from "@/components/import/ImportStatementDialog";
 
 import type { Transacao } from "@/lib/data/empty";
 import { formatBRL, formatDateBR } from "@/lib/format";
@@ -110,6 +112,7 @@ export default function TransacoesPage() {
   const { toast } = useToast();
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   async function loadTransactions() {
     const supabase = createClient();
@@ -215,6 +218,22 @@ export default function TransacoesPage() {
         eyebrow="Finanças"
         title="Transações"
         description="Navegue pelo histórico completo de entradas e saídas. Clique no lápis para editar ou corrigir um lançamento."
+        action={
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-accent hover:bg-accent/10 hover:text-ink"
+          >
+            <FileUp className="size-4" />
+            Importar extrato
+          </button>
+        }
+      />
+
+      <ImportStatementDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => void loadTransactions()}
       />
 
       {loadError && (

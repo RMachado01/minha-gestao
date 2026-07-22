@@ -591,6 +591,18 @@ export default function ConfiguracoesPage() {
             </div>
           )}
         </GlassCard>
+
+        <p className="col-span-12 pt-1 text-center text-xs text-ink-muted">
+          Logos de marca fornecidos por{" "}
+          <a
+            href="https://logo.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-ink"
+          >
+            Logo.dev
+          </a>
+        </p>
       </BentoGrid>
     </section>
   );
