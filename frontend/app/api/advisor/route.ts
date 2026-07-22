@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { getRequestUserId } from "@/lib/supabase/routeUser";
 
 /**
  * Proxy server-side para o Groq (provedor de LLM do MVP). A chave GROQ_API_KEY
@@ -20,23 +20,6 @@ const SYSTEM_PROMPT = [
   "Não dê recomendações de investimento específicas nem promessas de rentabilidade.",
 ].join(" ");
 
-async function getUserId(request: NextRequest): Promise<string | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll: () => {
-        /* rota somente-leitura: não renova cookies */
-      },
-    },
-  });
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return data.user.id;
-}
-
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -44,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "not_configured" }, { status: 501 });
   }
 
-  const userId = await getUserId(request);
+  const userId = await getRequestUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

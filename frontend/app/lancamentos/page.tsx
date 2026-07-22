@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowDownCircle, ArrowRight, ArrowUpCircle, Check, CheckCircle2, CreditCard, LoaderCircle, Plus, Sparkles } from "lucide-react";
+import { ArrowDownCircle, ArrowRight, ArrowUpCircle, Check, CheckCircle2, CreditCard, LoaderCircle, Plus, ScanLine, Sparkles } from "lucide-react";
+import { ReceiptScanDialog } from "@/components/receipts/ReceiptScanDialog";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MoneyInput, parseBRL } from "@/components/forms/MoneyInput";
@@ -52,6 +53,7 @@ export default function LancamentosPage() {
   const [savingCategory, setSavingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState("");
   const [lastTransaction, setLastTransaction] = useState<{ id: string; description: string; amount: number } | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
   const selectedCard = cards.find((card) => card.id === selectedCardId);
   const creditCards = cards.filter((card) => card.card_type === "credit");
   const benefitCards = cards.filter((card) => card.card_type === "benefit");
@@ -250,7 +252,15 @@ export default function LancamentosPage() {
   }
   return (
     <section className="flex flex-col gap-6">
-      <header><h2 className="text-2xl font-semibold text-ink">Novo lançamento</h2><p className="mt-1 text-sm text-ink-muted">Cadastre receitas e despesas. Compras em VR/VA descontam o saldo do cartão.</p></header>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="text-2xl font-semibold text-ink">Novo lançamento</h2><p className="mt-1 text-sm text-ink-muted">Cadastre receitas e despesas. Compras em VR/VA descontam o saldo do cartão.</p></div>
+        <button type="button" onClick={() => setScanOpen(true)} className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-accent hover:bg-accent/10 hover:text-ink">
+          <ScanLine className="size-4" />
+          Escanear nota
+        </button>
+      </header>
+
+      <ReceiptScanDialog open={scanOpen} onClose={() => setScanOpen(false)} onSaved={(id) => router.push(`/transacoes?created=${id}`)} />
       <BentoGrid>
         <GlassCard variant="hero" className="col-span-12 p-6 lg:p-7">
           <div className="mb-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">Etapa 1</p><h3 className="mt-1 text-lg font-semibold text-ink">O que você deseja registrar?</h3></div>
