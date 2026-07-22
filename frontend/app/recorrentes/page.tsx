@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Repeat, Tv, CreditCard, Home, Banknote, Settings2 } from "lucide-react";
+import { Repeat, Tv, CreditCard, Home, Banknote, Settings2, type LucideIcon } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { RecurrenceManageDialog } from "@/components/recurrences/RecurrenceManageDialog";
 import { RaiseCelebration } from "@/components/ui/RaiseCelebration";
 
 import { useRecurrences, type RecurrenceRule, type RecurrenceType } from "@/lib/supabase/useRecurrences";
+import { detectSubscriptionBrand } from "@/lib/subscriptions";
 import { formatBRL } from "@/lib/format";
 
 type Filtro = "todas" | "subscription" | "installment" | "fixed_bill" | "income";
@@ -30,11 +32,12 @@ const TIPO_BADGE: Record<RecurrenceType, { label: string; className: string }> =
   income: { label: "Renda", className: "bg-emerald-500/15 text-emerald-400" },
 };
 
-const TIPO_DOT_COLOR: Record<RecurrenceType, string> = {
-  subscription: "bg-purple-400",
-  installment: "bg-blue-400",
-  fixed_bill: "bg-slate-400",
-  income: "bg-emerald-400",
+/** Ícone + cor de marca para o avatar de fallback de cada tipo de recorrência. */
+const TIPO_AVATAR: Record<RecurrenceType, { icon: LucideIcon; color: string }> = {
+  subscription: { icon: Tv, color: "#a855f7" },
+  installment: { icon: CreditCard, color: "#3b82f6" },
+  fixed_bill: { icon: Home, color: "#64748b" },
+  income: { icon: Banknote, color: "#10b981" },
 };
 
 export default function RecorrentesPage() {
@@ -172,9 +175,14 @@ export default function RecorrentesPage() {
 
 function RecorrenciaRow({ item, onManage }: { item: RecurrenceRule; onManage: () => void }) {
   const badge = TIPO_BADGE[item.type];
-  const dotColor = TIPO_DOT_COLOR[item.type];
   const isInstallment = item.type === "installment" && item.current_installment != null && item.total_installments != null;
   const progress = isInstallment ? (item.current_installment! / item.total_installments!) : 0;
+
+  // Assinaturas ganham o logo real do serviço (Spotify, Netflix…) quando
+  // reconhecido pela descrição; os demais tipos usam o ícone do tipo.
+  const brand = item.type === "subscription" ? detectSubscriptionBrand(item.description) : null;
+  const avatar = TIPO_AVATAR[item.type];
+  const AvatarIcon = avatar.icon;
 
   return (
     <div
@@ -182,9 +190,23 @@ function RecorrenciaRow({ item, onManage }: { item: RecurrenceRule; onManage: ()
         item.active ? "opacity-100" : "opacity-50"
       }`}
     >
-      {/* Left: dot + descrição + categoria */}
+      {/* Left: logo/ícone da marca + descrição + categoria */}
       <div className="flex min-w-0 items-center gap-3">
-        <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
+        {brand ? (
+          <BrandLogo label={brand.label} domain={brand.domain} color={brand.color} textColor={brand.textColor} size={40} />
+        ) : (
+          <span
+            aria-hidden
+            className="grid size-10 shrink-0 place-items-center rounded-xl"
+            style={{
+              background: `color-mix(in oklab, ${avatar.color} 16%, transparent)`,
+              color: avatar.color,
+              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${avatar.color} 30%, transparent)`,
+            }}
+          >
+            <AvatarIcon className="size-[18px]" strokeWidth={2} />
+          </span>
+        )}
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">{item.description}</p>
           <div className="mt-0.5 flex items-center gap-2">

@@ -10,6 +10,7 @@ import {
   List,
   CalendarCheck,
   Repeat,
+  Target,
   Goal,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/gastos", label: "Gastos", icon: PieChart, group: "financas" },
   { href: "/planejamento", label: "Planejamento", icon: CalendarCheck, group: "financas" },
   { href: "/recorrentes", label: "Recorrentes", icon: Repeat, group: "financas" },
+  { href: "/planos", label: "Planos", icon: Target, group: "financas" },
   { href: "/cartoes", label: "Cartões", icon: CreditCard, group: "financas" },
   { href: "/investimentos", label: "Investimentos", icon: TrendingUp, group: "patrimonio" },
   { href: "/metas", label: "Sonhos e Metas", icon: Goal, group: "patrimonio" },
