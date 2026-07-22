@@ -58,16 +58,34 @@ export const BENEFIT_OPERATORS: Record<string, BrandIdentity> = {
 };
 
 /**
- * Base do serviço de logos por domínio. Padrão: Clearbit Logo API (gratuito,
- * sem chave). Pode ser trocado por Logo.dev/Brandfetch definindo
- * `NEXT_PUBLIC_LOGO_BASE` (com `{domain}` sendo substituído pelo domínio).
+ * Serviço de logos por domínio — Logo.dev (https://www.logo.dev). A chave é
+ * publicável (segura no client). Pode ser sobrescrita por
+ * `NEXT_PUBLIC_LOGO_DEV_TOKEN`, ou trocada por outro provedor via
+ * `NEXT_PUBLIC_LOGO_BASE` (com `{domain}`/`{size}` substituídos).
+ *
+ * Nota de licença: no plano gratuito, o uso comercial exige um link de
+ * atribuição de volta para o Logo.dev (projetos pessoais não).
  */
-const LOGO_BASE = process.env.NEXT_PUBLIC_LOGO_BASE ?? "https://logo.clearbit.com/{domain}";
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN ?? "pk_d3XNtLL5TEmawlyLbImdFQ";
+const LOGO_BASE_OVERRIDE = process.env.NEXT_PUBLIC_LOGO_BASE;
 
 /** URL do logo da marca a partir do domínio. `null` quando não há domínio conhecido. */
 export function logoUrl(domain: string | null | undefined, size = 128): string | null {
   if (!domain) return null;
-  return LOGO_BASE.replace("{domain}", domain).replace("{size}", String(size));
+  if (LOGO_BASE_OVERRIDE) {
+    return LOGO_BASE_OVERRIDE.replace("{domain}", domain).replace("{size}", String(size));
+  }
+  // `fallback=404` faz o Logo.dev retornar 404 quando não tem o logo, para que
+  // o <BrandLogo> caia no fallback próprio (inicial na cor da marca) em vez do
+  // monograma preto-e-branco padrão do serviço.
+  const params = new URLSearchParams({
+    token: LOGO_DEV_TOKEN,
+    size: String(size),
+    format: "png",
+    retina: "true",
+    fallback: "404",
+  });
+  return `https://img.logo.dev/${encodeURIComponent(domain)}?${params.toString()}`;
 }
 
 /** Busca a identidade de marca em `map`, com fallback seguro para valores ausentes/desconhecidos. */
