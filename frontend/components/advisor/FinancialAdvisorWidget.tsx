@@ -47,7 +47,7 @@ export function FinancialAdvisorWidget() {
   const [question, setQuestion] = useState("");
   const [thinking, setThinking] = useState(false);
   const [messages, setMessages] = useState<AdvisorMessage[]>([
-    { role: "assistant", text: "Posso explicar seus gastos, saldo, cartões, reserva e metas usando somente os dados cadastrados nesta conta." },
+    { role: "assistant", text: "Oi! Sou o assistente da sua conta. Posso explicar seus gastos, saldo, cartões, reserva e metas usando somente os dados cadastrados aqui." },
   ]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -169,13 +169,13 @@ export function FinancialAdvisorWidget() {
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--z-advisor)] flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--ai-accent)_28%,var(--color-line))] bg-[var(--color-surface-2)] px-4 text-sm font-semibold text-ink shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,var(--ai-accent))] lg:bottom-6 lg:right-6"
-        aria-label={open ? "Fechar inteligência da conta" : "Abrir inteligência da conta"}
+        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--z-advisor)] grid size-14 place-items-center rounded-full border border-[color-mix(in_oklab,#ff8fb0_34%,var(--color-line))] bg-[var(--color-surface-2)] shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,#ff8fb0)] lg:bottom-6 lg:right-6"
+        aria-label={open ? "Minimizar assistente da conta" : "Abrir assistente da sua conta"}
+        title="Assistente da sua conta"
         aria-expanded={open}
         aria-controls="financial-advisor-dialog"
       >
-        {open ? <ChevronDown className="size-4 ai-accent" /> : <BunnyPaw className="size-4 ai-accent" />}
-        <span>{open ? "Minimizar" : "Inteligência"}</span>
+        {open ? <ChevronDown className="size-5 text-ink-soft" /> : <BunnyPaw className="size-7" />}
       </button>
 
       <AnimatePresence>
