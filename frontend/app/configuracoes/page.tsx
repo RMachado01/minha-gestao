@@ -19,6 +19,7 @@ import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { AppLockSettings } from "@/components/security/AppLockSettings";
 import { JointAccountSettings } from "@/components/security/JointAccountSettings";
+import { NotificationSettings } from "@/components/security/NotificationSettings";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/shell/UserAvatar";
 import {
@@ -472,6 +473,8 @@ export default function ConfiguracoesPage() {
         <JointAccountSettings />
         {/* ---------- Segurança — Bloqueio por PIN ---------- */}
         <AppLockSettings />
+        {/* ---------- Notificações push ---------- */}
+        <NotificationSettings />
         {/* ---------- LGPD — Privacidade e dados ---------- */}
         <GlassCard variant="liquid" className="col-span-12 lg:col-span-6">
           <div className="flex items-center gap-3">
