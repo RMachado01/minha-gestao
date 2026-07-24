@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowRight, Landmark, LockKeyhole, LoaderCircle } from "lucide-react";
+import { ArrowRight, LockKeyhole, LoaderCircle } from "lucide-react";
+import { BunnyMark } from "@/components/ui/BunnyMark";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Captcha, isCaptchaEnabled, type CaptchaHandle } from "@/components/auth/Captcha";
@@ -133,7 +134,7 @@ export default function CadastroPage() {
         {/* Brand header */}
         <div className="mb-8 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-xl bg-accent text-white">
-            <Landmark className="size-5" />
+            <BunnyMark className="size-6" />
           </span>
           <div>
             <p className="font-semibold text-ink">Minha Gestão</p>

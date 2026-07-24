@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Landmark } from "lucide-react";
+import { BunnyMark } from "@/components/ui/BunnyMark";
 import { NAV_GROUPS, NAV_ITEMS } from "@/lib/nav";
 import { cn } from "@/lib/cn";
 import { UserAvatar } from "./UserAvatar";
@@ -23,7 +23,7 @@ export function Sidebar() {
     <aside className="shell-glass sticky top-0 hidden h-dvh w-[17rem] shrink-0 flex-col rounded-none border-y-0 border-l-0 p-5 lg:flex">
       <div className="mb-7 flex items-center gap-3 px-1 pt-1">
         <span className="grid h-10 w-10 place-items-center rounded-[.8rem] bg-accent text-white shadow-[0_12px_28px_-18px_var(--color-accent)]">
-          <Landmark className="h-[1.15rem] w-[1.15rem]" strokeWidth={2} />
+          <BunnyMark className="h-[1.35rem] w-[1.35rem]" />
         </span>
         <div className="leading-tight">
           <p className="text-[.95rem] font-semibold tracking-[-.025em] text-ink">Minha Gestão</p>

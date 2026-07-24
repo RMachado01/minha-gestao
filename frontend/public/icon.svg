@@ -6,8 +6,20 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M150 322 L228 250 L286 296 L360 198"/>
-    <path d="M318 198 L360 198 L360 240"/>
+  <!-- orelhas + cabeça -->
+  <g fill="#ffffff">
+    <ellipse cx="214" cy="176" rx="31" ry="92" transform="rotate(-12 214 176)"/>
+    <ellipse cx="298" cy="176" rx="31" ry="92" transform="rotate(12 298 176)"/>
+    <circle cx="256" cy="330" r="108"/>
   </g>
+  <!-- orelhas internas -->
+  <g fill="#b9ead7">
+    <ellipse cx="216" cy="186" rx="13" ry="56" transform="rotate(-12 216 186)"/>
+    <ellipse cx="296" cy="186" rx="13" ry="56" transform="rotate(12 296 186)"/>
+  </g>
+  <!-- olhos -->
+  <circle cx="224" cy="322" r="13" fill="#0b5a41"/>
+  <circle cx="288" cy="322" r="13" fill="#0b5a41"/>
+  <!-- focinho -->
+  <ellipse cx="256" cy="352" rx="11" ry="8" fill="#ff9db0"/>
 </svg>
