@@ -250,7 +250,8 @@ export default function CartoesPage() {
     bandeira: card.brand,
     banco: card.bank ?? "",
     limiteTotal: card.total_limit,
-    limiteUsado: card.current_bill_status === "paid" ? 0 : card.current_bill,
+    // Limite comprometido = fatura atual (se não paga) + parcelas futuras a vencer.
+    limiteUsado: (card.current_bill_status === "paid" ? 0 : card.current_bill) + card.committed_installments,
     faturaAtual: card.current_bill,
     vencimento: `${String(card.due_day).padStart(2, "0")}/${month}`,
     status: card.current_bill_status === "paid" ? "paga" : card.current_bill_status === "closed" ? "fechada" : "aberta",
