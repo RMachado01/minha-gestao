@@ -48,6 +48,9 @@ begin
   return NEW;
 end;
 $$;
+-- Função de trigger não deve ser exposta como RPC (o trigger dispara mesmo
+-- sem EXECUTE concedido, pois roda com o dono da tabela).
+revoke all on function public.stamp_household() from public, anon, authenticated;
 
 -- ── Aplica household_id + trigger + RLS (SELECT compartilhado / escrita própria)
 --    em cada tabela financeira compartilhável ──
