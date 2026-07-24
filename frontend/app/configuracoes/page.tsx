@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { AppLockSettings } from "@/components/security/AppLockSettings";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/shell/UserAvatar";
 import {
@@ -496,6 +497,8 @@ export default function ConfiguracoesPage() {
             </p>
           </div>
         </GlassCard>
+        {/* ---------- Segurança — Bloqueio por PIN ---------- */}
+        <AppLockSettings />
         {/* ---------- LGPD — Privacidade e dados ---------- */}
         <GlassCard variant="liquid" className="col-span-12 lg:col-span-6">
           <div className="flex items-center gap-3">

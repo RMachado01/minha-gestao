@@ -64,6 +64,11 @@ export async function POST(request: NextRequest) {
   if (!image.startsWith("data:image/")) {
     return NextResponse.json({ error: "invalid_image" }, { status: 400 });
   }
+  // Defesa: a imagem já vem reduzida do client (~1280px/JPEG). Rejeita payloads
+  // grandes para não abusar da cota nem sobrecarregar o modelo de visão.
+  if (image.length > 3_000_000) {
+    return NextResponse.json({ error: "image_too_large" }, { status: 413 });
+  }
 
   const model = process.env.GROQ_VISION_MODEL ?? DEFAULT_VISION_MODEL;
   const payload = {
