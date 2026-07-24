@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronDown, Database, LoaderCircle, Sparkle, RefreshCw, Send, X } from "lucide-react";
+import { ChevronDown, Database, LoaderCircle, RefreshCw, Send, X } from "lucide-react";
+import { BunnyPaw } from "@/components/ui/BunnyPaw";
 import { answerFinancialQuestion, computeInsights, type FinancialGoal, type Insight, type TransactionSummary } from "@/lib/goals";
 import { askAdvisorAI, buildAdvisorContext } from "@/lib/advisor/askAI";
 import { createClient } from "@/lib/supabase/client";
@@ -173,7 +174,7 @@ export function FinancialAdvisorWidget() {
         aria-expanded={open}
         aria-controls="financial-advisor-dialog"
       >
-        {open ? <ChevronDown className="size-4 ai-accent" /> : <Sparkle className="size-4 ai-accent" />}
+        {open ? <ChevronDown className="size-4 ai-accent" /> : <BunnyPaw className="size-4 ai-accent" />}
         <span>{open ? "Minimizar" : "Inteligência"}</span>
       </button>
 
@@ -193,7 +194,7 @@ export function FinancialAdvisorWidget() {
             transition={{ duration: reduceMotion ? .01 : .24, ease: [.2, .8, .2, 1] }}
           >
             <header className="flex items-center gap-3 border-b border-[var(--color-line)] p-4">
-              <span className="grid size-9 place-items-center ai-accent"><Sparkle className="size-5" strokeWidth={1.75} /></span>
+              <span className="grid size-9 place-items-center ai-accent"><BunnyPaw className="size-5" /></span>
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold tracking-[-.02em] text-ink">Inteligência da conta</h2>
                 <p className="mt-0.5 text-xs text-ink-muted">Leitura contextual, sem dados inventados</p>
@@ -221,7 +222,7 @@ export function FinancialAdvisorWidget() {
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {insights.length > 0 && (
                 <div className="space-y-2">
-                  <p className="eyebrow ai-accent flex items-center gap-1.5"><Sparkle className="size-3" />Leitura da conta</p>
+                  <p className="eyebrow ai-accent flex items-center gap-1.5"><BunnyPaw className="size-3" />Leitura da conta</p>
                   {insights.slice(0, 3).map((insight) => (
                     <div key={insight.id} className={`rounded-xl border px-3.5 py-3 text-sm leading-5 text-ink-soft ${INSIGHT_TONE[insight.tone]}`}>{insight.text}</div>
                   ))}
