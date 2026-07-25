@@ -184,6 +184,10 @@ html[data-theme="light"] body::before {
   -webkit-backdrop-filter: blur(24px) saturate(125%);
 }
 
+/* Bloqueio por PIN: esconde o conteúdo antes do overlay React montar,
+   evitando vazar dados por um frame. O <AppLock> cobre a tela por cima. */
+:root[data-locked="1"] #app-root { visibility: hidden; }
+
 .ai-surface {
   /* Base opaca (surface-2) + brilho sutil de IA no canto, para o popup do
      agente ficar legível sem o conteúdo da página vazando por trás. */

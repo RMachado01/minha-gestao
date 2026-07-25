@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronDown, Database, LoaderCircle, Sparkle, RefreshCw, Send, X } from "lucide-react";
+import { ChevronDown, Database, LoaderCircle, RefreshCw, Send, X } from "lucide-react";
+import { BunnyPaw } from "@/components/ui/BunnyPaw";
 import { answerFinancialQuestion, computeInsights, type FinancialGoal, type Insight, type TransactionSummary } from "@/lib/goals";
 import { askAdvisorAI, buildAdvisorContext } from "@/lib/advisor/askAI";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +47,7 @@ export function FinancialAdvisorWidget() {
   const [question, setQuestion] = useState("");
   const [thinking, setThinking] = useState(false);
   const [messages, setMessages] = useState<AdvisorMessage[]>([
-    { role: "assistant", text: "Posso explicar seus gastos, saldo, cartões, reserva e metas usando somente os dados cadastrados nesta conta." },
+    { role: "assistant", text: "Oi! Sou o assistente da sua conta. Posso explicar seus gastos, saldo, cartões, reserva e metas usando somente os dados cadastrados aqui." },
   ]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -168,13 +169,13 @@ export function FinancialAdvisorWidget() {
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--z-advisor)] flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--ai-accent)_28%,var(--color-line))] bg-[var(--color-surface-2)] px-4 text-sm font-semibold text-ink shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,var(--ai-accent))] lg:bottom-6 lg:right-6"
-        aria-label={open ? "Fechar inteligência da conta" : "Abrir inteligência da conta"}
+        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--z-advisor)] grid size-14 place-items-center rounded-full border border-[color-mix(in_oklab,#ff8fb0_34%,var(--color-line))] bg-[var(--color-surface-2)] shadow-[var(--shadow-elevated)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-surface-2)_88%,#ff8fb0)] lg:bottom-6 lg:right-6"
+        aria-label={open ? "Minimizar assistente da conta" : "Abrir assistente da sua conta"}
+        title="Assistente da sua conta"
         aria-expanded={open}
         aria-controls="financial-advisor-dialog"
       >
-        {open ? <ChevronDown className="size-4 ai-accent" /> : <Sparkle className="size-4 ai-accent" />}
-        <span>{open ? "Minimizar" : "Inteligência"}</span>
+        {open ? <ChevronDown className="size-5 text-ink-soft" /> : <BunnyPaw className="size-7" />}
       </button>
 
       <AnimatePresence>
@@ -193,7 +194,7 @@ export function FinancialAdvisorWidget() {
             transition={{ duration: reduceMotion ? .01 : .24, ease: [.2, .8, .2, 1] }}
           >
             <header className="flex items-center gap-3 border-b border-[var(--color-line)] p-4">
-              <span className="grid size-9 place-items-center ai-accent"><Sparkle className="size-5" strokeWidth={1.75} /></span>
+              <span className="grid size-9 place-items-center ai-accent"><BunnyPaw className="size-5" /></span>
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold tracking-[-.02em] text-ink">Inteligência da conta</h2>
                 <p className="mt-0.5 text-xs text-ink-muted">Leitura contextual, sem dados inventados</p>
@@ -221,7 +222,7 @@ export function FinancialAdvisorWidget() {
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {insights.length > 0 && (
                 <div className="space-y-2">
-                  <p className="eyebrow ai-accent flex items-center gap-1.5"><Sparkle className="size-3" />Leitura da conta</p>
+                  <p className="eyebrow ai-accent flex items-center gap-1.5"><BunnyPaw className="size-3" />Leitura da conta</p>
                   {insights.slice(0, 3).map((insight) => (
                     <div key={insight.id} className={`rounded-xl border px-3.5 py-3 text-sm leading-5 text-ink-soft ${INSIGHT_TONE[insight.tone]}`}>{insight.text}</div>
                   ))}

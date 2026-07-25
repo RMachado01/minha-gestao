@@ -11,14 +11,15 @@ import {
   Moon,
   Palette,
   Phone,
-  ShieldCheck,
   Sun,
   Trash2,
   UserRound,
-  UsersRound,
 } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { AppLockSettings } from "@/components/security/AppLockSettings";
+import { JointAccountSettings } from "@/components/security/JointAccountSettings";
+import { NotificationSettings } from "@/components/security/NotificationSettings";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/shell/UserAvatar";
 import {
@@ -468,34 +469,12 @@ export default function ConfiguracoesPage() {
           </div>
         </GlassCard>
 
-        {/* ---------- Grupo familiar ---------- */}
-        <GlassCard variant="liquid" className="col-span-12">
-          <div className="flex items-center gap-3">
-            <UsersRound className="size-5 text-accent" />
-            <div>
-              <h3 className="font-semibold text-ink">Grupo familiar</h3>
-              <p className="text-sm text-ink-muted">
-                Preparação para acesso compartilhado
-              </p>
-            </div>
-          </div>
-          <div className="mt-5 rounded-2xl border border-dashed border-[var(--color-line)] p-5">
-            <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-semibold text-warn">
-              Recurso planejado
-            </span>
-            <p className="mt-3 text-sm font-medium text-ink">Compartilhamento familiar ainda não está disponível.</p>
-            <p className="mt-1 text-sm text-ink-muted">
-              A estrutura de permissões está sendo preparada, mas convites por e-mail e gestão de acessos ainda exigem um fluxo seguro no servidor.
-            </p>
-          </div>
-          <div className="mt-5 flex gap-3 rounded-2xl bg-emerald-400/10 p-4 text-sm text-ink-soft">
-            <ShieldCheck className="size-5 shrink-0 text-pos" />
-            <p>
-              Quando lançado, cada familiar terá login próprio e acesso limitado
-              por políticas RLS do Supabase.
-            </p>
-          </div>
-        </GlassCard>
+        {/* ---------- Conta conjunta ---------- */}
+        <JointAccountSettings />
+        {/* ---------- Segurança — Bloqueio por PIN ---------- */}
+        <AppLockSettings />
+        {/* ---------- Notificações push ---------- */}
+        <NotificationSettings />
         {/* ---------- LGPD — Privacidade e dados ---------- */}
         <GlassCard variant="liquid" className="col-span-12 lg:col-span-6">
           <div className="flex items-center gap-3">

@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Minha Gestão">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d6b4e"/>
+      <stop offset="1" stop-color="#12a56f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="256" cy="336" r="98"/>
+    <path d="M228 248 C 196 196, 196 122, 220 100 C 246 124, 252 196, 250 246"/>
+    <path d="M284 248 C 316 196, 316 122, 292 100 C 266 124, 260 196, 262 246"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="230" cy="330" r="9"/>
+    <circle cx="282" cy="330" r="9"/>
+    <circle cx="256" cy="356" r="7"/>
+  </g>
+</svg>

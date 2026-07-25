@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CircleGauge, Database, Sparkle, ShieldAlert, Target } from "lucide-react";
+import { ArrowRight, CircleGauge, Database, ShieldAlert, Target } from "lucide-react";
+import { BunnyPaw } from "@/components/ui/BunnyPaw";
 import { formatBRL, formatPercent } from "@/lib/format";
 
 interface DailyBriefingProps {
@@ -40,7 +41,7 @@ export function DailyBriefing({
     <aside className="ai-surface col-span-12 flex min-h-full flex-col rounded-[var(--radius-card-lg)] p-5 lg:col-span-4 lg:p-6" aria-labelledby="daily-briefing-title">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow ai-accent flex items-center gap-2"><Sparkle className="size-3.5" />Inteligência da conta</p>
+          <p className="eyebrow ai-accent flex items-center gap-2"><BunnyPaw className="size-3.5" />Inteligência da conta</p>
           <h2 id="daily-briefing-title" className="display-font mt-2 text-[1.75rem] font-medium leading-[1.05] tracking-[-.025em] text-ink">Briefing de hoje</h2>
         </div>
         <span className="ai-proof"><Database className="size-3" />Dados do mês</span>

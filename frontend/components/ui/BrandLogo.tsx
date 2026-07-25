@@ -43,15 +43,20 @@ export function BrandLogo({
   return (
     <span
       className={cn(
-        "relative inline-grid shrink-0 place-items-center overflow-hidden rounded-xl",
+        "relative inline-grid shrink-0 place-items-center overflow-hidden",
         className,
       )}
       style={{
         width: size,
         height: size,
-        background: showLogo ? "#ffffff" : color,
+        // Tile levemente off-white (estilo app-icon) para o logo respirar sem o
+        // branco puro estático; fallback usa a cor cheia da marca.
+        background: showLogo ? "#f4f4f6" : color,
         color: textColor,
-        boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.10)",
+        borderRadius: Math.round(size * 0.28),
+        boxShadow: showLogo
+          ? "0 1px 2px rgb(0 0 0 / 0.16), inset 0 0 0 1px rgb(0 0 0 / 0.06)"
+          : "inset 0 0 0 1px rgb(255 255 255 / 0.12)",
       }}
       aria-hidden="true"
     >
@@ -65,7 +70,8 @@ export function BrandLogo({
           loading="lazy"
           decoding="async"
           onError={() => setFailedSrc(src)}
-          className="h-full w-full object-contain p-1.5"
+          className="h-full w-full object-contain"
+          style={{ padding: Math.round(size * 0.18) }}
         />
       ) : (
         <span

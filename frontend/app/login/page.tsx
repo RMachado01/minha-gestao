@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Landmark, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
+import { BunnyMark } from "@/components/ui/BunnyMark";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default async function LoginPage({
@@ -33,7 +34,7 @@ export default async function LoginPage({
         {/* Brand header */}
         <div className="mb-8 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-xl bg-accent text-white">
-            <Landmark className="size-5" />
+            <BunnyMark className="size-6" />
           </span>
           <div>
             <p className="font-semibold text-ink">Minha Gestão</p>

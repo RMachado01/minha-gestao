@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowDownCircle, ArrowRight, ArrowUpCircle, Check, CheckCircle2, CreditCard, LoaderCircle, Plus, Sparkles } from "lucide-react";
+import { ArrowDownCircle, ArrowRight, ArrowUpCircle, Check, CheckCircle2, CreditCard, LoaderCircle, Plus, ScanLine, Sparkles } from "lucide-react";
+import { ReceiptScanDialog } from "@/components/receipts/ReceiptScanDialog";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { MoneyInput, parseBRL } from "@/components/forms/MoneyInput";
@@ -28,6 +29,19 @@ const BASE_CATEGORIES = {
   income: ["Salário", "Freelance", "Rendimentos", "Benefícios", "Outros"],
 } as const;
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+/** Soma `k` meses a uma data ISO (YYYY-MM-DD), ajustando o dia ao fim do mês. */
+function addMonths(iso: string, k: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const target = m - 1 + k;
+  const ny = y + Math.floor(target / 12);
+  const nm = ((target % 12) + 12) % 12;
+  const dim = new Date(ny, nm + 1, 0).getDate();
+  return `${ny}-${pad2(nm + 1)}-${pad2(Math.min(d, dim))}`;
+}
+
 export default function LancamentosPage() {
   const today = new Date().toISOString().slice(0, 10);
   const router = useRouter();
@@ -44,6 +58,9 @@ export default function LancamentosPage() {
   const [recurring, setRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment" | "income">("subscription");
   const [dueDay, setDueDay] = useState(Number(today.slice(8, 10)));
+  // Crédito: à vista ou parcelado em N vezes.
+  const [creditMode, setCreditMode] = useState<"avista" | "parcelado">("avista");
+  const [installments, setInstallments] = useState(2);
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Alimentação");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -52,6 +69,7 @@ export default function LancamentosPage() {
   const [savingCategory, setSavingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState("");
   const [lastTransaction, setLastTransaction] = useState<{ id: string; description: string; amount: number } | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
   const selectedCard = cards.find((card) => card.id === selectedCardId);
   const creditCards = cards.filter((card) => card.card_type === "credit");
   const benefitCards = cards.filter((card) => card.card_type === "benefit");
@@ -166,6 +184,74 @@ export default function LancamentosPage() {
       return;
     }
 
+    // ── Compra parcelada no cartão de crédito ──
+    if (tipo === "expense" && payment === "credit" && creditMode === "parcelado") {
+      const n = Math.min(24, Math.max(2, installments));
+      const parcela = Math.round((amount / n) * 100) / 100;
+      const amounts = Array.from({ length: n }, (_, k) => (k < n - 1 ? parcela : Math.round((amount - parcela * (n - 1)) * 100) / 100));
+      const desc = String(data.get("description")).trim();
+      const dateStr = String(data.get("date"));
+      const category = String(data.get("category"));
+      const dueDayCard = selectedCard?.due_day ?? dueDay;
+
+      // Recorrência (para aparecer em Recorrentes com o progresso da parcela).
+      const { data: rule, error: ruleError } = await supabase
+        .from("recurrence_rules")
+        .insert({
+          user_id: authData.user.id,
+          description: `${desc} (${n}x)`,
+          type: "installment",
+          amount: parcela,
+          day_of_month: dueDayCard,
+          start_date: dateStr,
+          total_installments: n,
+          current_installment: 1,
+          category_id: selectedCategoryId,
+          active: true,
+        })
+        .select("id")
+        .single();
+      if (ruleError || !rule) {
+        setError("Não foi possível criar o parcelamento. Tente novamente.");
+        setSaving(false);
+        return;
+      }
+
+      // Uma transação por parcela: cada uma cai na fatura do seu mês
+      // (bill_reference) e compromete o limite até ser paga.
+      const rows = amounts.map((amt, k) => {
+        const occurred = addMonths(dateStr, k);
+        return {
+          user_id: authData.user.id,
+          type: "expense" as const,
+          amount: amt,
+          occurred_on: occurred,
+          description: `${desc} (${k + 1}/${n})`,
+          category,
+          category_id: selectedCategoryId,
+          payment_method: "credit",
+          benefit_kind: null,
+          recurring: false,
+          recurrence_id: rule.id,
+          credit_card_id: selectedCardId,
+          installments_total: n,
+          current_installment: k + 1,
+          bill_reference: occurred.slice(0, 7),
+          origin: "expense",
+          status: "pending",
+          idempotency_key: crypto.randomUUID(),
+        };
+      });
+      const { data: inserted, error: insertError } = await supabase.from("transactions").insert(rows).select("id");
+      if (insertError || !inserted?.length) {
+        setError("Não foi possível salvar as parcelas. Tente novamente.");
+        setSaving(false);
+        return;
+      }
+      finishSuccess(form, { id: inserted[0].id, description: `${desc} — ${n}x de ${parcela.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, amount });
+      return;
+    }
+
     let recurrenceId: string | null = null;
     if (recurring) {
       const { data: rule, error: ruleError } = await supabase.from("recurrence_rules").insert({
@@ -242,6 +328,8 @@ export default function LancamentosPage() {
     setRecurring(false);
     setRecurrenceType("subscription");
     setDueDay(Number(today.slice(8, 10)));
+    setCreditMode("avista");
+    setInstallments(2);
     setSaved(true);
     setSaving(false);
     setLastTransaction(transaction);
@@ -250,7 +338,15 @@ export default function LancamentosPage() {
   }
   return (
     <section className="flex flex-col gap-6">
-      <header><h2 className="text-2xl font-semibold text-ink">Novo lançamento</h2><p className="mt-1 text-sm text-ink-muted">Cadastre receitas e despesas. Compras em VR/VA descontam o saldo do cartão.</p></header>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="text-2xl font-semibold text-ink">Novo lançamento</h2><p className="mt-1 text-sm text-ink-muted">Cadastre receitas e despesas. Compras em VR/VA descontam o saldo do cartão.</p></div>
+        <button type="button" onClick={() => setScanOpen(true)} className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-accent hover:bg-accent/10 hover:text-ink">
+          <ScanLine className="size-4" />
+          Escanear nota
+        </button>
+      </header>
+
+      <ReceiptScanDialog open={scanOpen} onClose={() => setScanOpen(false)} onSaved={(id) => router.push(`/transacoes?created=${id}`)} />
       <BentoGrid>
         <GlassCard variant="hero" className="col-span-12 p-6 lg:p-7">
           <div className="mb-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-accent">Etapa 1</p><h3 className="mt-1 text-lg font-semibold text-ink">O que você deseja registrar?</h3></div>
@@ -264,7 +360,7 @@ export default function LancamentosPage() {
             {tipo === "expense" && payment === "benefit" ? <label className="field-label sm:col-span-2">Categoria<input type="hidden" name="category" value="Alimentação" /><span className="field flex items-center bg-amber-400/10 text-warn">Alimentação · definida automaticamente</span></label> : <div className="sm:col-span-2"><div className="flex items-end gap-2"><label className="field-label min-w-0 flex-1">Categoria<SelectField name="category" value={selectedCategory} onChange={(event) => chooseCategory(event.target.value)}>{categoryOptions.map((name) => <option key={name} value={name}>{name}</option>)}</SelectField></label><button type="button" onClick={() => setShowCategoryForm((current) => !current)} className="mb-0.5 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent/10"><Plus className="size-4" /><span className="hidden sm:inline">Nova categoria</span></button></div>{showCategoryForm && <div className="surface-card mt-3 flex flex-wrap gap-2 rounded-2xl p-3"><input className="field min-w-48 flex-1" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createCategory(); } }} placeholder="Nome da nova categoria" maxLength={80} autoFocus /><button type="button" className="btn-primary" onClick={() => void createCategory()} disabled={savingCategory}>{savingCategory ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}Adicionar</button>{categoryError && <p role="alert" className="w-full text-sm text-neg">{categoryError}</p>}</div>}</div>}
             {tipo === "expense" && (
               <label className="field-label sm:col-span-2">Forma de pagamento
-                <SelectField name="payment" value={payment} onChange={(event) => { setPayment(event.target.value); setSelectedCardId(""); }}>
+                <SelectField name="payment" value={payment} onChange={(event) => { setPayment(event.target.value); setSelectedCardId(""); setCreditMode("avista"); }}>
                   <option value="pix">Débito / Pix</option>
                   <option value="credit">Cartão de crédito — escolher cartão</option>
                   <option value="benefit">Cartão alimentação (VR / VA)</option>
@@ -293,9 +389,25 @@ export default function LancamentosPage() {
                   </div>
                 )}
                 {selectedCard && <div className="surface-card mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"><div><p className="text-sm font-semibold text-ink">{selectedCard.nickname} vinculado</p><p className="text-xs text-ink-muted">{selectedCard.card_type === "benefit" ? "Débito automático após salvar." : "A compra entrará na fatura deste cartão."}</p></div><div className="text-right"><p className="text-xs text-ink-muted">{selectedCard.card_type === "benefit" ? "Saldo disponível" : "Fatura atual"}</p><p className="tnum text-sm font-semibold text-ink">{(selectedCard.card_type === "benefit" ? selectedCard.benefit_balance : selectedCard.current_bill).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div></div>}
+                {payment === "credit" && (
+                  <div className="mt-3">
+                    <span className="field-label mb-1 block">Forma de pagamento no cartão</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["avista", "parcelado"] as const).map((mode) => (
+                        <button key={mode} type="button" aria-pressed={creditMode === mode} onClick={() => setCreditMode(mode)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${creditMode === mode ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:bg-white/5"}`}>{mode === "avista" ? "À vista" : "Parcelado"}</button>
+                      ))}
+                    </div>
+                    {creditMode === "parcelado" && (
+                      <label className="field-label mt-3 block">Número de parcelas
+                        <input className="field tnum" type="number" min={2} max={24} value={installments} onChange={(e) => setInstallments(Math.min(24, Math.max(2, Number(e.target.value) || 2)))} />
+                        <span className="field-help">Dividido em {installments}x iguais. Cada parcela cai na fatura de um mês e compromete o limite do cartão até ser paga.</span>
+                      </label>
+                    )}
+                  </div>
+                )}
               </fieldset>
             )}
-            {payment !== "benefit" && tipo === "expense" && (
+            {payment !== "benefit" && tipo === "expense" && !(payment === "credit" && creditMode === "parcelado") && (
               <div className="sm:col-span-2">
                 <label className="ios-glass flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm text-ink-soft"><input type="checkbox" name="recurring" className="size-4" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /><span><strong className="block font-semibold text-ink">Repetir mensalmente</strong><span className="text-xs text-ink-muted">Cria uma recorrência que pode ser pausada depois.</span></span></label>
                 {recurring && (

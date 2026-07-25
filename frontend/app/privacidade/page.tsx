@@ -71,12 +71,39 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-ink">5. Compartilhamento</h2>
+          <h2 className="text-lg font-semibold text-ink">5. Compartilhamento e Operadores</h2>
           <p>
-            Seus dados nao sao vendidos nem compartilhados com terceiros para fins de
-            marketing. Os dados trafegam apenas entre o frontend (hospedado na Vercel),
-            o backend (API) e o banco de dados (Supabase/PostgreSQL), todos com conexao
-            criptografada (TLS).
+            Seus dados <strong>nao sao vendidos</strong> nem compartilhados para fins de
+            marketing. Para operar o servico, utilizamos os seguintes operadores
+            (subcontratados), todos com conexao criptografada (TLS):
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li><strong>Vercel</strong> — hospedagem do aplicativo.</li>
+            <li><strong>Supabase (PostgreSQL)</strong> — banco de dados, autenticacao e armazenamento.</li>
+            <li><strong>Groq</strong> — provedor de inteligencia artificial (ver Secao 5.1).</li>
+            <li><strong>Logo.dev</strong> — exibicao de logos de marcas (bancos e assinaturas), por dominio.</li>
+            <li><strong>hCaptcha</strong> — protecao contra abuso no login/cadastro.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-ink">5.1. Inteligencia Artificial e Transferencia Internacional</h2>
+          <p>
+            O assistente financeiro e a leitura de comprovantes por foto sao processados
+            pela <strong>Groq</strong>, cujos servidores ficam nos <strong>Estados Unidos</strong>.
+            Isso configura <strong>transferencia internacional de dados</strong> (LGPD Art. 33),
+            realizada com base no seu consentimento e para a execucao do servico. Nesses
+            recursos podem ser enviados:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Um <strong>resumo agregado</strong> da sua conta (totais e categorias do mes) quando voce usa o assistente — nunca a lista completa de transacoes.</li>
+            <li>A <strong>foto do comprovante</strong> que voce escolher escanear, apenas para extrair valor, data e descricao.</li>
+          </ul>
+          <p className="mt-2">
+            A imagem do comprovante e usada somente para a extracao no momento do envio e
+            <strong> nao e armazenada</strong> pelo aplicativo. Segundo a Groq, os dados de API
+            nao sao utilizados para treinar modelos. Voce pode usar o app normalmente sem
+            esses recursos de IA.
           </p>
         </section>
 
@@ -136,11 +163,14 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-ink">10. Contato</h2>
+          <h2 className="text-lg font-semibold text-ink">10. Encarregado (DPO) e Contato</h2>
           <p>
-            Para exercer seus direitos ou esclarecer duvidas sobre privacidade, entre em
-            contato pelo e-mail indicado na pagina de Configuracoes ou utilize as funcoes
-            de exportacao e exclusao disponiveis na propria plataforma.
+            Para exercer seus direitos, esclarecer duvidas sobre privacidade ou falar com o
+            nosso <strong>Encarregado pelo Tratamento de Dados (DPO)</strong>, entre em contato
+            pelo e-mail indicado na pagina de Configuracoes. Voce tambem pode usar as funcoes
+            de exportacao e exclusao disponiveis na propria plataforma, e, se necessario,
+            registrar reclamacao junto a <strong>ANPD</strong> (Autoridade Nacional de Protecao
+            de Dados).
           </p>
         </section>
       </article>

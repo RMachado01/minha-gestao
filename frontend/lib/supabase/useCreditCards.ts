@@ -15,6 +15,8 @@ export interface CreditCardRecord {
   active: boolean;
   current_bill: number;
   current_bill_status: "open" | "closed" | "paid";
+  /** Soma das parcelas futuras (faturas a vencer) que comprometem o limite. */
+  committed_installments: number;
   card_type: "credit" | "benefit";
   benefit_mode: "separate" | "flex" | null;
   vr_balance: number;
@@ -78,7 +80,7 @@ export function useCreditCards() {
     const referenceMonth = monthKey(now);
     const historyStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
     const historyStartMonth = monthKey(historyStart);
-    const [cardsResult, transactionBillsResult, storedBillsResult] = await Promise.all([
+    const [cardsResult, transactionBillsResult, storedBillsResult, futureBillsResult] = await Promise.all([
       supabase
         .from("credit_cards")
         .select("id,nickname,brand,bank,total_limit,closing_day,due_day,color,active,card_type,benefit_mode,vr_balance,va_balance,flex_balance,benefit_credit_amount,benefit_credit_day")
@@ -95,6 +97,11 @@ export function useCreditCards() {
         .gte("reference_month", historyStartMonth)
         .lte("reference_month", referenceMonth)
         .order("reference_month"),
+      // Faturas futuras (parcelas ainda não cobradas) — comprometem o limite.
+      supabase
+        .from("vw_fatura_cartao_mensal")
+        .select("credit_card_id,reference_month,total")
+        .gt("reference_month", referenceMonth),
     ]);
 
     const { data, error: queryError } = cardsResult;
@@ -166,6 +173,14 @@ export function useCreditCards() {
         setError("O histórico está usando apenas as faturas consolidadas; lançamentos recentes podem demorar a aparecer.");
       }
 
+      // Soma das faturas futuras por cartão = parcelas ainda a vencer que
+      // seguem comprometendo o limite disponível.
+      const committedByCard = new Map<string, number>();
+      for (const bill of (futureBillsResult.data ?? []) as TransactionBillRow[]) {
+        if (!creditCardIds.has(bill.credit_card_id)) continue;
+        committedByCard.set(bill.credit_card_id, (committedByCard.get(bill.credit_card_id) ?? 0) + Number(bill.total));
+      }
+
       setCards(
         cardRows
           .filter((card) => card.active)
@@ -181,6 +196,7 @@ export function useCreditCards() {
             benefit_credit_amount: card.benefit_credit_amount === null ? null : Number(card.benefit_credit_amount),
             current_bill: currentBillByCard.get(card.id) ?? 0,
             current_bill_status: currentStatusByCard.get(card.id) ?? "open",
+            committed_installments: committedByCard.get(card.id) ?? 0,
           })),
       );
     }
