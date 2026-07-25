@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import {
   LoaderCircle,
   RefreshCw,
   FileUp,
+  Plus,
 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -418,8 +420,24 @@ export default function TransacoesPage() {
               )}
               {!loading && filtrada.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-ink-muted">
-                    Nenhuma transação encontrada com os filtros selecionados.
+                  <td colSpan={7} className="py-12 text-center">
+                    {lista.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-accent)_16%,transparent)] text-accent">
+                          <Receipt className="size-5" />
+                        </span>
+                        <div>
+                          <p className="font-semibold text-ink">Seu histórico está vazio</p>
+                          <p className="mt-1 max-w-sm text-sm text-ink-muted">Cada receita ou despesa que você registrar aparece aqui, com filtros por período e categoria.</p>
+                        </div>
+                        <Link href="/lancamentos" className="btn-primary mt-1">
+                          <Plus className="size-4" />
+                          Criar primeiro lançamento
+                        </Link>
+                      </div>
+                    ) : (
+                      <span className="text-ink-muted">Nenhuma transação encontrada com os filtros selecionados.</span>
+                    )}
                   </td>
                 </tr>
               )}

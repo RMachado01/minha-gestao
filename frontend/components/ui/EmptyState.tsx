@@ -7,7 +7,10 @@ interface EmptyStateProps {
   title: string;
   description: string;
   actionLabel?: string;
+  /** Navega para uma rota (ex.: "/lancamentos"). */
   actionHref?: string;
+  /** Ação na própria página (ex.: abrir um dialog de cadastro). */
+  actionOnClick?: () => void;
   icon?: LucideIcon;
 }
 
@@ -16,6 +19,7 @@ export function EmptyState({
   description,
   actionLabel,
   actionHref,
+  actionOnClick,
   icon: Icon = Inbox,
 }: EmptyStateProps) {
   return (
@@ -30,6 +34,12 @@ export function EmptyState({
           {actionLabel}
           <ArrowRight className="size-4" />
         </Link>
+      )}
+      {actionLabel && !actionHref && actionOnClick && (
+        <button type="button" onClick={actionOnClick} className="btn-primary mt-6">
+          {actionLabel}
+          <ArrowRight className="size-4" />
+        </button>
       )}
     </GlassCard>
   );
