@@ -6,6 +6,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import { SmoothScroll } from "@/components/shell/SmoothScroll";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
+import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { AppLock } from "@/components/security/AppLock";
 
 const geistSans = Geist({
@@ -73,6 +74,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-dvh">
         <RegisterSW />
+        <OfflineBanner />
         <AppLock />
         <div id="app-root">
           <SmoothScroll>
