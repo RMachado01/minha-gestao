@@ -9,11 +9,14 @@ Uma seção por funcionalidade, com onde vive no código e as regras que não s�
 - Um lançamento é uma linha em `transactions` (`type` income/expense/benefit).
 - **Idempotência:** cada insert leva um `idempotency_key` (UUID) — `unique(user_id, idempotency_key)` impede duplicidade.
 
-### Status (`pending`/`paid`/`received`)
+### Status (`pending`/`paid`/`received`) — regime de caixa
 
-- **Definido automaticamente na criação:** despesa → `pending`; receita → `received`; parcelas → `pending`. O usuário **não** escolhe no cadastro.
-- **Editável** só em Transações (dropdown Pendente/Pago/Recebido), exibido como chip colorido.
-- ⚠️ **É decorativo:** não afeta saldo, entradas, saídas nem economia (as views e `useFinanceSummary` não filtram por status). Decisão pendente: dar semântica (contas a pagar) ou remover. Não confundir com o status **funcional** da fatura de cartão (`credit_card_bills.status`).
+- **Só o efetivado conta.** Transações `paid`/`received` entram no saldo, fluxo e gastos; `pending` fica em **"a pagar / a receber"**, fora do saldo, até ser quitada.
+- **Padrão na criação:** todo lançamento nasce **efetivado** (`paid` para despesa, `received` para receita; parcelas de cartão `paid`). No formulário há um toggle "Já paguei / Já recebi" — desmarcar cria como **a pagar / a receber** (`pending`).
+- **Quitar:** editar a transação em Transações e mudar o status para Pago/Recebido (dropdown) — aí entra no saldo. Há filtro de status em Transações (inclui "A pagar / a receber").
+- **Dashboard:** o hero de saldo mostra chips "A pagar" / "A receber" quando há pendentes, com link para Transações filtradas.
+- **Onde é aplicado:** `lib/supabase/useFinanceSummary.ts` (agrega no cliente e ignora `pending`, somando-os em `aPagar`/`aReceber`) e as views `vw_resumo_mensal`/`vw_gastos_por_categoria_mensal`. Migration `20260724000003_transaction_status_cash_regime.sql` (muda o default para `paid` e faz backfill do histórico).
+- **Cartões de benefício** e **aportes de meta** (RPCs) já nascem `paid`. Não confundir com `credit_card_bills.status` (fatura), que é separado.
 
 ## Cartões de crédito e parcelamento
 

@@ -53,16 +53,20 @@ Notas importantes:
 | `payment_method` | text | inclui `credit` (cartão) |
 | `credit_card_id` | uuid | FK quando pago no cartão |
 | `origin` | text | `fixed_income`/`variable_income`/`expense`/`recurring_expense` |
-| `status` | text | `pending`/`paid`/`received` — **decorativo** (ver abaixo) |
+| `status` | text | `pending`/`paid`/`received`. Default `paid`. **Regime de caixa** (ver abaixo) |
 | `recurring`, `recurrence_id` | bool/uuid | ligação com `recurrence_rules` |
 | `installments_total`, `current_installment` | smallint | parcelamento de cartão |
 | `bill_reference` | char(7) | `YYYY-MM` da fatura em que a parcela cai |
 | `idempotency_key` | text | `unique(user_id, idempotency_key)` — evita duplicidade |
 
-> ⚠️ **`status` é cosmético.** As views e o `useFinanceSummary` **não** filtram
-> por status; uma despesa "pending" entra no saldo igual a uma "paid". Se for
-> dar semântica a "pendente" (ex.: contas a pagar que não abatem o saldo), é
-> preciso mudar as views/hooks. Ver [features.md](features.md#lançamentos-e-status).
+> **`status` — regime de caixa.** Só transações efetivadas (`paid`/`received`)
+> entram no saldo/gastos; `pending` conta como "a pagar / a receber", fora do
+> saldo, até ser quitada. Filtragem em `lib/supabase/useFinanceSummary.ts`
+> (que agrega no cliente) e, por consistência, nas views `vw_resumo_mensal` e
+> `vw_gastos_por_categoria_mensal`. O padrão da coluna é `paid` (todo lançamento
+> nasce efetivado); `pending` é opt-in no formulário. Migration:
+> `20260724000003_transaction_status_cash_regime.sql`. Não confundir com
+> `credit_card_bills.status` (open/closed/paid), que é separado.
 
 ### Cartões
 

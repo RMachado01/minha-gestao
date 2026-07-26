@@ -111,6 +111,7 @@ export default function TransacoesPage() {
   const [tipo, setTipo] = useState<string>("");
   const [categoria, setCategoria] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
+  const [statusFiltro, setStatusFiltro] = useState<string>(searchParams.get("status") === "pendente" ? "pendente" : "");
   const { toast } = useToast();
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -153,11 +154,12 @@ export default function TransacoesPage() {
       .filter((t) => {
         if (tipo && t.tipo !== tipo) return false;
         if (categoria && t.categoria !== categoria) return false;
+        if (statusFiltro && t.status !== statusFiltro) return false;
         if (busca && !t.descricao.toLowerCase().includes(busca.toLowerCase())) return false;
         return true;
       })
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [lista, tipo, categoria, busca]);
+  }, [lista, tipo, categoria, statusFiltro, busca]);
 
   const totalEntradas = useMemo(
     () => filtrada.filter((t) => t.tipo === "income").reduce((s, t) => s + t.valor, 0),
@@ -259,6 +261,20 @@ export default function TransacoesPage() {
             <option value="income">Entradas</option>
             <option value="expense">Saídas</option>
             <option value="benefit">VR / VA</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] px-3 py-1.5 text-sm">
+          <select
+            value={statusFiltro}
+            onChange={(e) => setStatusFiltro(e.target.value)}
+            className="bg-transparent text-ink outline-none"
+            aria-label="Filtrar por status"
+          >
+            <option value="">Status</option>
+            <option value="pendente">A pagar / a receber</option>
+            <option value="pago">Pago</option>
+            <option value="recebido">Recebido</option>
           </select>
         </div>
 

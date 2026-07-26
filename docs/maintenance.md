@@ -53,7 +53,7 @@ compartilhável): RLS `on`, uma policy `_select` (com cláusula de household) e 
 - **`NEXT_PUBLIC_` vaza para o bundle:** nunca prefixe segredos com isso.
 - **Service worker só em produção:** push e casca offline não funcionam em `npm run dev`.
 - **VAPID pública em duas variáveis:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client) e `VAPID_PUBLIC_KEY` (server) têm o mesmo valor, de propósito.
-- **`status` da transação é cosmético** (não afeta saldo). Não confundir com `credit_card_bills.status`, que é funcional.
+- **`status` da transação = regime de caixa:** só `paid`/`received` contam no saldo; `pending` é "a pagar/a receber". Default da coluna é `paid`. A agregação do saldo é **no cliente** (`useFinanceSummary`), não nas views — mudar a regra exige mexer no hook (as views são espelho, ninguém no app as consome). Não confundir com `credit_card_bills.status`.
 - **Regex com diacríticos:** ao normalizar texto (statement/subscriptions), os ranges Unicode (`/[̀-ͯ]/g`) precisam ser escritos com escapes, não com os caracteres combinantes literais.
 - **Lint `set-state-in-effect`:** evite `setState` síncrono no corpo de um `useEffect`; o padrão do repo é `useSyncExternalStore` ou deferir com `void Promise.resolve().then(...)`.
 - **Conta conjunta:** as RPCs são `SECURITY DEFINER` (rodam fora da RLS). Ao mexer nelas, garanta que cada uma só afeta a household do próprio chamador.
