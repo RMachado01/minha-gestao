@@ -12,6 +12,7 @@ interface TxRow {
   amount: number;
   occurred_on: string;
   category: string;
+  status: "pending" | "paid" | "received";
 }
 
 interface MonthTotals {
@@ -49,6 +50,10 @@ export interface FinanceSummary {
     trendEntradas: number;
     trendSaidas: number;
     trendEconomia: number;
+    /** Despesas pendentes do mês (status pending) — fora do saldo. */
+    aPagar: number;
+    /** Receitas pendentes do mês (status pending) — fora do saldo. */
+    aReceber: number;
   };
   gastosPorCategoria: GastoCategoria[];
   gastosTotal: number;
@@ -60,7 +65,7 @@ const EMPTY_SUMMARY: FinanceSummary = {
   error: "",
   fluxoMensal: [],
   fluxoAnual: [],
-  fluxoKpis: { entradas: 0, saidas: 0, saldo: 0, economiaPct: 0, trendSaldo: 0, trendEntradas: 0, trendSaidas: 0, trendEconomia: 0 },
+  fluxoKpis: { entradas: 0, saidas: 0, saldo: 0, economiaPct: 0, trendSaldo: 0, trendEntradas: 0, trendSaidas: 0, trendEconomia: 0, aPagar: 0, aReceber: 0 },
   gastosPorCategoria: [],
   gastosTotal: 0,
   gastosHistorico: [],
@@ -92,7 +97,7 @@ export function useFinanceSummary(): FinanceSummary {
 
     const { data, error } = await supabase
       .from("transactions")
-      .select("type,amount,occurred_on,category")
+      .select("type,amount,occurred_on,category,status")
       .gte("occurred_on", rangeStart)
       .lte("occurred_on", rangeEnd)
       .limit(5000);
@@ -103,9 +108,12 @@ export function useFinanceSummary(): FinanceSummary {
     }
 
     const rows = (data ?? []) as TxRow[];
+    // Regime de caixa: só o que foi efetivado (paid/received) entra no saldo,
+    // fluxo e gastos. Pendentes são somados à parte (a pagar / a receber).
+    const realized = rows.filter((row) => row.status !== "pending");
 
     const byMonth = new Map<string, MonthTotals>();
-    for (const row of rows) {
+    for (const row of realized) {
       const key = row.occurred_on.slice(0, 7);
       const bucket = byMonth.get(key) ?? emptyMonth();
       const amount = Number(row.amount);
@@ -126,6 +134,18 @@ export function useFinanceSummary(): FinanceSummary {
     const economiaPctAtual = currentTotals.entradas > 0 ? saldoAtual / currentTotals.entradas : 0;
     const economiaPctAnterior = prevTotals.entradas > 0 ? saldoAnterior / prevTotals.entradas : 0;
 
+    // Pendentes do mês corrente (fora do saldo): a pagar (despesa/benefício) e
+    // a receber (receita).
+    let aPagar = 0;
+    let aReceber = 0;
+    for (const row of rows) {
+      if (row.status !== "pending") continue;
+      if (row.occurred_on.slice(0, 7) !== currentMonthKey) continue;
+      const amount = Number(row.amount);
+      if (row.type === "income") aReceber += amount;
+      else aPagar += amount;
+    }
+
     const fluxoKpis = {
       entradas: currentTotals.entradas,
       saidas: currentTotals.saidas,
@@ -135,6 +155,8 @@ export function useFinanceSummary(): FinanceSummary {
       trendEntradas: pct(currentTotals.entradas, prevTotals.entradas),
       trendSaidas: pct(currentTotals.saidas, prevTotals.saidas),
       trendEconomia: pct(economiaPctAtual, economiaPctAnterior),
+      aPagar,
+      aReceber,
     };
 
     // Fluxo anual: Jan–Dez do ano corrente.
@@ -146,7 +168,7 @@ export function useFinanceSummary(): FinanceSummary {
 
     // Fluxo mensal: 4 semanas do mês corrente (dias 29-31 caem na semana 4).
     const weekBuckets: MonthTotals[] = [emptyMonth(), emptyMonth(), emptyMonth(), emptyMonth()];
-    for (const row of rows) {
+    for (const row of realized) {
       if (row.occurred_on.slice(0, 7) !== currentMonthKey) continue;
       const day = Number(row.occurred_on.slice(8, 10));
       const week = Math.min(Math.ceil(day / 7), 4) - 1;
@@ -164,7 +186,7 @@ export function useFinanceSummary(): FinanceSummary {
     // Gastos por categoria (mês corrente, expense + benefit) com tendência vs. mês anterior.
     const currentCategory = new Map<string, { value: number; transacoes: number }>();
     const prevCategory = new Map<string, number>();
-    for (const row of rows) {
+    for (const row of realized) {
       if (row.type !== "expense" && row.type !== "benefit") continue;
       const key = row.occurred_on.slice(0, 7);
       const amount = Number(row.amount);

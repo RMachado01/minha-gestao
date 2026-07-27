@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import {
   LoaderCircle,
   RefreshCw,
   FileUp,
+  Plus,
 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -109,6 +111,7 @@ export default function TransacoesPage() {
   const [tipo, setTipo] = useState<string>("");
   const [categoria, setCategoria] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
+  const [statusFiltro, setStatusFiltro] = useState<string>(searchParams.get("status") === "pendente" ? "pendente" : "");
   const { toast } = useToast();
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -151,11 +154,12 @@ export default function TransacoesPage() {
       .filter((t) => {
         if (tipo && t.tipo !== tipo) return false;
         if (categoria && t.categoria !== categoria) return false;
+        if (statusFiltro && t.status !== statusFiltro) return false;
         if (busca && !t.descricao.toLowerCase().includes(busca.toLowerCase())) return false;
         return true;
       })
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [lista, tipo, categoria, busca]);
+  }, [lista, tipo, categoria, statusFiltro, busca]);
 
   const totalEntradas = useMemo(
     () => filtrada.filter((t) => t.tipo === "income").reduce((s, t) => s + t.valor, 0),
@@ -257,6 +261,20 @@ export default function TransacoesPage() {
             <option value="income">Entradas</option>
             <option value="expense">Saídas</option>
             <option value="benefit">VR / VA</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] px-3 py-1.5 text-sm">
+          <select
+            value={statusFiltro}
+            onChange={(e) => setStatusFiltro(e.target.value)}
+            className="bg-transparent text-ink outline-none"
+            aria-label="Filtrar por status"
+          >
+            <option value="">Status</option>
+            <option value="pendente">A pagar / a receber</option>
+            <option value="pago">Pago</option>
+            <option value="recebido">Recebido</option>
           </select>
         </div>
 
@@ -418,8 +436,24 @@ export default function TransacoesPage() {
               )}
               {!loading && filtrada.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-ink-muted">
-                    Nenhuma transação encontrada com os filtros selecionados.
+                  <td colSpan={7} className="py-12 text-center">
+                    {lista.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-accent)_16%,transparent)] text-accent">
+                          <Receipt className="size-5" />
+                        </span>
+                        <div>
+                          <p className="font-semibold text-ink">Seu histórico está vazio</p>
+                          <p className="mt-1 max-w-sm text-sm text-ink-muted">Cada receita ou despesa que você registrar aparece aqui, com filtros por período e categoria.</p>
+                        </div>
+                        <Link href="/lancamentos" className="btn-primary mt-1">
+                          <Plus className="size-4" />
+                          Criar primeiro lançamento
+                        </Link>
+                      </div>
+                    ) : (
+                      <span className="text-ink-muted">Nenhuma transação encontrada com os filtros selecionados.</span>
+                    )}
                   </td>
                 </tr>
               )}

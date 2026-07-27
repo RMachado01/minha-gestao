@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Repeat, Tv, CreditCard, Home, Banknote, Settings2, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { Repeat, Tv, CreditCard, Home, Banknote, Settings2, Plus, type LucideIcon } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -156,9 +157,23 @@ export default function RecorrentesPage() {
         </div>
 
         {!loading && itens.length === 0 && (
-          <p className="py-12 text-center text-sm text-ink-muted">
-            {items.length === 0 ? "Nenhuma recorrência cadastrada ainda. Crie uma em Novo lançamento, marcando como recorrente." : "Nenhuma recorrência nesta categoria."}
-          </p>
+          items.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_oklab,var(--color-accent)_16%,transparent)] text-accent">
+                <Repeat className="size-5" />
+              </span>
+              <div>
+                <p className="font-semibold text-ink">Nenhuma recorrência ainda</p>
+                <p className="mt-1 max-w-sm text-sm text-ink-muted">Assinaturas, contas fixas e parcelamentos aparecem aqui. Crie um lançamento e marque como recorrente.</p>
+              </div>
+              <Link href="/lancamentos" className="btn-primary mt-1">
+                <Plus className="size-4" />
+                Criar lançamento recorrente
+              </Link>
+            </div>
+          ) : (
+            <p className="py-12 text-center text-sm text-ink-muted">Nenhuma recorrência nesta categoria.</p>
+          )
         )}
       </GlassCard>
 

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TrendBadge } from "@/components/ui/TrendBadge";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -395,11 +396,14 @@ export default function CartoesPage() {
               onDelete={(card) => { setManagedCard(card); setDialogMode("delete"); }}
             />
           ))}
-          {!loading && cartoes.length === 0 && (
-            <GlassCard variant="liquid" className="col-span-12 py-10 text-center">
-              <p className="font-medium text-ink">Nenhum cartão de crédito cadastrado</p>
-              <p className="mt-1 text-sm text-ink-muted">Cadastre um cartão para acompanhar limite, vencimento e faturas.</p>
-            </GlassCard>
+          {!loading && cartoes.length === 0 && benefitRecords.length === 0 && (
+            <div className="col-span-12">
+              <EmptyState
+                icon={CreditCard}
+                title="Nenhum cartão cadastrado"
+                description="Cadastre seu primeiro cartão para acompanhar limite, vencimento e faturas — é só usar o botão “Adicionar cartão” aqui em cima."
+              />
+            </div>
           )}
         </BentoGrid>
       </div>

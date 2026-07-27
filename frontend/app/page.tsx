@@ -198,6 +198,23 @@ export default function VisaoGeralPage() {
               frente ao mês anterior.
             </p>
 
+            {(fluxoKpis.aPagar > 0 || fluxoKpis.aReceber > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {fluxoKpis.aPagar > 0 && (
+                  <Link href="/transacoes?status=pendente" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-[var(--color-line-strong)] hover:text-ink">
+                    <span className="size-2 rounded-full bg-warn" aria-hidden />
+                    A pagar <span className="tnum font-semibold text-ink">{formatBRL(fluxoKpis.aPagar)}</span>
+                  </Link>
+                )}
+                {fluxoKpis.aReceber > 0 && (
+                  <Link href="/transacoes?status=pendente" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-[var(--color-line-strong)] hover:text-ink">
+                    <span className="size-2 rounded-full bg-pos" aria-hidden />
+                    A receber <span className="tnum font-semibold text-ink">{formatBRL(fluxoKpis.aReceber)}</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
             {/* Mini-gráfico de tendência — últimos 12 meses */}
             <div className="mt-auto">
               <div className="mb-2 flex items-center justify-between text-xs text-ink-muted">

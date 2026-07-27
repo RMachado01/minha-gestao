@@ -56,6 +56,9 @@ export default function LancamentosPage() {
   const [selectedCardId, setSelectedCardId] = useState("");
   const [benefitKind, setBenefitKind] = useState<"vr" | "va">("vr");
   const [recurring, setRecurring] = useState(false);
+  // Regime de caixa: por padrão o lançamento já foi efetivado (pago/recebido).
+  // Desmarcar cria como "a pagar / a receber" (fora do saldo até quitar).
+  const [efetivado, setEfetivado] = useState(true);
   const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment" | "income">("subscription");
   const [dueDay, setDueDay] = useState(Number(today.slice(8, 10)));
   // Crédito: à vista ou parcelado em N vezes.
@@ -238,7 +241,8 @@ export default function LancamentosPage() {
           current_installment: k + 1,
           bill_reference: occurred.slice(0, 7),
           origin: "expense",
-          status: "pending",
+          // Parcelas nascem efetivadas: cada uma cai (e conta) no mês da sua fatura.
+          status: "paid",
           idempotency_key: crypto.randomUUID(),
         };
       });
@@ -307,7 +311,9 @@ export default function LancamentosPage() {
       recurrence_id: recurrenceId,
       credit_card_id: tipo === "expense" && payment === "credit" ? selectedCardId : null,
       origin: tipo === "expense" ? (recurring ? "recurring_expense" : "expense") : (recurring ? "fixed_income" : "variable_income"),
-      status: tipo === "expense" ? "pending" : "received",
+      // Regime de caixa: nasce efetivado (paid/received); "a pagar/a receber"
+      // é opt-in (efetivado = false) e fica fora do saldo até ser quitado.
+      status: efetivado ? (tipo === "expense" ? "paid" : "received") : "pending",
       idempotency_key: crypto.randomUUID(),
     }).select("id").single();
 
@@ -357,7 +363,24 @@ export default function LancamentosPage() {
             <label className="field-label sm:col-span-2">Descrição<input className="field" name="description" placeholder={tipo === "income" ? "Ex.: Salário" : "Ex.: Compra no supermercado"} required /><span className="field-help">Use um nome que seja fácil de reconhecer no extrato.</span></label>
             <label className="field-label">Valor<MoneyInput name="amount" placeholder="0,00" required /></label>
             <label className="field-label">Data do lançamento<input className="field" name="date" type="date" defaultValue={today} required /></label>
-            {tipo === "expense" && payment === "benefit" ? <label className="field-label sm:col-span-2">Categoria<input type="hidden" name="category" value="Alimentação" /><span className="field flex items-center bg-amber-400/10 text-warn">Alimentação · definida automaticamente</span></label> : <div className="sm:col-span-2"><div className="flex items-end gap-2"><label className="field-label min-w-0 flex-1">Categoria<SelectField name="category" value={selectedCategory} onChange={(event) => chooseCategory(event.target.value)}>{categoryOptions.map((name) => <option key={name} value={name}>{name}</option>)}</SelectField></label><button type="button" onClick={() => setShowCategoryForm((current) => !current)} className="mb-0.5 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent/10"><Plus className="size-4" /><span className="hidden sm:inline">Nova categoria</span></button></div>{showCategoryForm && <div className="surface-card mt-3 flex flex-wrap gap-2 rounded-2xl p-3"><input className="field min-w-48 flex-1" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createCategory(); } }} placeholder="Nome da nova categoria" maxLength={80} autoFocus /><button type="button" className="btn-primary" onClick={() => void createCategory()} disabled={savingCategory}>{savingCategory ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}Adicionar</button>{categoryError && <p role="alert" className="w-full text-sm text-neg">{categoryError}</p>}</div>}</div>}
+            {payment !== "benefit" && !(tipo === "expense" && payment === "credit" && creditMode === "parcelado") && (
+              <label className="ios-glass flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 sm:col-span-2">
+                <input type="checkbox" checked={efetivado} onChange={(event) => setEfetivado(event.target.checked)} className="size-4" />
+                <span className="text-sm">
+                  <strong className="block font-semibold text-ink">
+                    {efetivado ? (tipo === "expense" ? "Já paguei" : "Já recebi") : (tipo === "expense" ? "A pagar" : "A receber")}
+                  </strong>
+                  <span className="text-xs text-ink-muted">
+                    {efetivado
+                      ? "Entra no saldo do mês."
+                      : tipo === "expense"
+                        ? "Fica em “a pagar”, fora do saldo, até você marcar como pago."
+                        : "Fica em “a receber”, fora do saldo, até você marcar como recebido."}
+                  </span>
+                </span>
+              </label>
+            )}
+            {tipo === "expense" && payment === "benefit" ?<label className="field-label sm:col-span-2">Categoria<input type="hidden" name="category" value="Alimentação" /><span className="field flex items-center bg-amber-400/10 text-warn">Alimentação · definida automaticamente</span></label> : <div className="sm:col-span-2"><div className="flex items-end gap-2"><label className="field-label min-w-0 flex-1">Categoria<SelectField name="category" value={selectedCategory} onChange={(event) => chooseCategory(event.target.value)}>{categoryOptions.map((name) => <option key={name} value={name}>{name}</option>)}</SelectField></label><button type="button" onClick={() => setShowCategoryForm((current) => !current)} className="mb-0.5 inline-flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--color-line)] px-4 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent/10"><Plus className="size-4" /><span className="hidden sm:inline">Nova categoria</span></button></div>{showCategoryForm && <div className="surface-card mt-3 flex flex-wrap gap-2 rounded-2xl p-3"><input className="field min-w-48 flex-1" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createCategory(); } }} placeholder="Nome da nova categoria" maxLength={80} autoFocus /><button type="button" className="btn-primary" onClick={() => void createCategory()} disabled={savingCategory}>{savingCategory ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}Adicionar</button>{categoryError && <p role="alert" className="w-full text-sm text-neg">{categoryError}</p>}</div>}</div>}
             {tipo === "expense" && (
               <label className="field-label sm:col-span-2">Forma de pagamento
                 <SelectField name="payment" value={payment} onChange={(event) => { setPayment(event.target.value); setSelectedCardId(""); setCreditMode("avista"); }}>
