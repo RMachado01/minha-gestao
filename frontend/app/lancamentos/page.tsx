@@ -61,9 +61,16 @@ export default function LancamentosPage() {
   const [efetivado, setEfetivado] = useState(true);
   const [recurrenceType, setRecurrenceType] = useState<"subscription" | "fixed_bill" | "installment" | "income">("subscription");
   const [dueDay, setDueDay] = useState(Number(today.slice(8, 10)));
+  // Duração da recorrência: "sem fim" (assinatura contínua) ou nº de meses.
+  const [recurrenceEnds, setRecurrenceEnds] = useState(false);
+  const [recurrenceMonthsInput, setRecurrenceMonthsInput] = useState("12");
+  const recurrenceMonths = Math.min(120, Math.max(2, Number(recurrenceMonthsInput) || 2));
   // Crédito: à vista ou parcelado em N vezes.
   const [creditMode, setCreditMode] = useState<"avista" | "parcelado">("avista");
-  const [installments, setInstallments] = useState(2);
+  // Guardado como texto para o campo não travar enquanto o usuário apaga e
+  // digita (ex.: limpar "2" para escrever "3"). Normalizado no blur/submit.
+  const [installmentsInput, setInstallmentsInput] = useState("2");
+  const installments = Math.min(24, Math.max(2, Number(installmentsInput) || 2));
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Alimentação");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -258,13 +265,20 @@ export default function LancamentosPage() {
 
     let recurrenceId: string | null = null;
     if (recurring) {
+      // Duração: "sem fim" deixa end_date nulo; com número de meses, encerra
+      // na última ocorrência e guarda o total para mostrar o progresso.
+      const startIso = String(data.get("date"));
+      const endIso = recurrenceEnds ? addMonths(startIso, recurrenceMonths - 1) : null;
       const { data: rule, error: ruleError } = await supabase.from("recurrence_rules").insert({
         user_id: authData.user.id,
         description: String(data.get("description")).trim(),
         type: recurrenceType,
         amount,
         day_of_month: dueDay,
-        start_date: String(data.get("date")),
+        start_date: startIso,
+        end_date: endIso,
+        total_installments: recurrenceEnds ? recurrenceMonths : null,
+        current_installment: recurrenceEnds ? 1 : null,
         category_id: selectedCategoryId,
         active: true,
       }).select("id").single();
@@ -335,7 +349,9 @@ export default function LancamentosPage() {
     setRecurrenceType("subscription");
     setDueDay(Number(today.slice(8, 10)));
     setCreditMode("avista");
-    setInstallments(2);
+    setInstallmentsInput("2");
+    setRecurrenceEnds(false);
+    setRecurrenceMonthsInput("12");
     setSaved(true);
     setSaving(false);
     setLastTransaction(transaction);
@@ -421,10 +437,34 @@ export default function LancamentosPage() {
                       ))}
                     </div>
                     {creditMode === "parcelado" && (
-                      <label className="field-label mt-3 block">Número de parcelas
-                        <input className="field tnum" type="number" min={2} max={24} value={installments} onChange={(e) => setInstallments(Math.min(24, Math.max(2, Number(e.target.value) || 2)))} />
-                        <span className="field-help">Dividido em {installments}x iguais. Cada parcela cai na fatura de um mês e compromete o limite do cartão até ser paga.</span>
-                      </label>
+                      <div className="mt-3">
+                        <label className="field-label block">Número de parcelas
+                          <input
+                            className="field tnum"
+                            type="number"
+                            inputMode="numeric"
+                            min={2}
+                            max={24}
+                            value={installmentsInput}
+                            onChange={(e) => setInstallmentsInput(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                            onBlur={() => setInstallmentsInput(String(installments))}
+                          />
+                          <span className="field-help">Dividido em {installments}x iguais. Cada parcela cai na fatura de um mês e compromete o limite do cartão até ser paga.</span>
+                        </label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {[2, 3, 4, 6, 10, 12].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              aria-pressed={installments === n}
+                              onClick={() => setInstallmentsInput(String(n))}
+                              className={`min-h-9 rounded-xl border px-3 text-sm font-semibold transition ${installments === n ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:bg-white/5"}`}
+                            >
+                              {n}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -437,6 +477,30 @@ export default function LancamentosPage() {
                   <div className="mt-3 grid gap-4 sm:grid-cols-2">
                     <label className="field-label">Tipo de recorrência<SelectField value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as typeof recurrenceType)}><option value="subscription">Assinatura</option><option value="fixed_bill">Conta fixa</option><option value="installment">Parcelamento</option></SelectField></label>
                     <label className="field-label">Dia de vencimento<input className="field tnum" type="number" min={1} max={31} value={dueDay} onChange={(event) => setDueDay(Number(event.target.value))} required /><span className="field-help">Dia do mês em que a assinatura/conta vence.</span></label>
+                    <div className="sm:col-span-2">
+                      <span className="field-label mb-1 block">Duração</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" aria-pressed={!recurrenceEnds} onClick={() => setRecurrenceEnds(false)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${!recurrenceEnds ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:bg-white/5"}`}>Recorrente (sem fim)</button>
+                        <button type="button" aria-pressed={recurrenceEnds} onClick={() => setRecurrenceEnds(true)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${recurrenceEnds ? "border-accent bg-accent/10 text-ink" : "border-[var(--color-line)] text-ink-soft hover:bg-white/5"}`}>Número de meses</button>
+                      </div>
+                      {recurrenceEnds ? (
+                        <label className="field-label mt-3 block">Quantas vezes vai repetir
+                          <input
+                            className="field tnum"
+                            type="number"
+                            inputMode="numeric"
+                            min={2}
+                            max={120}
+                            value={recurrenceMonthsInput}
+                            onChange={(event) => setRecurrenceMonthsInput(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                            onBlur={() => setRecurrenceMonthsInput(String(recurrenceMonths))}
+                          />
+                          <span className="field-help">Repete {recurrenceMonths}x e encerra automaticamente.</span>
+                        </label>
+                      ) : (
+                        <p className="field-help mt-2">Repete todo mês até você pausar ou excluir em Recorrentes.</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowUpCircle,
@@ -18,6 +18,8 @@ import {
   RefreshCw,
   FileUp,
   Plus,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { BentoGrid } from "@/components/ui/BentoGrid";
@@ -42,6 +44,20 @@ const categoriasList = [
   "Educação",
   "Assinatura",
 ];
+
+/** Desloca uma referência "YYYY-MM" em N meses. */
+function shiftMonth(reference: string, delta: number): string {
+  const [year, month] = reference.split("-").map(Number);
+  const date = new Date(year, month - 1 + delta, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Rótulo amigável de "YYYY-MM" (ex.: "ago. de 2026"). */
+function monthLabel(reference: string): string {
+  const [year, month] = reference.split("-").map(Number);
+  return new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric", timeZone: "UTC" })
+    .format(new Date(Date.UTC(year, month - 1, 1)));
+}
 
 const STATUS_STYLE: Record<string, string> = {
   pago: "bg-emerald-500/15 text-emerald-400",
@@ -112,6 +128,12 @@ export default function TransacoesPage() {
   const [categoria, setCategoria] = useState<string>("");
   const [busca, setBusca] = useState<string>("");
   const [statusFiltro, setStatusFiltro] = useState<string>(searchParams.get("status") === "pendente" ? "pendente" : "");
+  // Período: por padrão só o mês vigente (o histórico completo é opt-in).
+  const [periodo, setPeriodo] = useState<"mes" | "ano" | "tudo">("mes");
+  const [mesRef, setMesRef] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
   const { toast } = useToast();
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -152,6 +174,9 @@ export default function TransacoesPage() {
   const filtrada = useMemo(() => {
     return lista
       .filter((t) => {
+        // Período: mês vigente (padrão), ano do mês selecionado, ou tudo.
+        if (periodo === "mes" && t.data.slice(0, 7) !== mesRef) return false;
+        if (periodo === "ano" && t.data.slice(0, 4) !== mesRef.slice(0, 4)) return false;
         if (tipo && t.tipo !== tipo) return false;
         if (categoria && t.categoria !== categoria) return false;
         if (statusFiltro && t.status !== statusFiltro) return false;
@@ -159,7 +184,7 @@ export default function TransacoesPage() {
         return true;
       })
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [lista, tipo, categoria, statusFiltro, busca]);
+  }, [lista, tipo, categoria, statusFiltro, busca, periodo, mesRef]);
 
   const totalEntradas = useMemo(
     () => filtrada.filter((t) => t.tipo === "income").reduce((s, t) => s + t.valor, 0),
@@ -247,6 +272,47 @@ export default function TransacoesPage() {
         </div>
       )}
 
+      {/* Período — por padrão só o mês vigente */}
+      <div className="gz-rise flex flex-wrap items-center gap-3" style={{ animationDelay: "0ms" }}>
+        <div className="inline-flex rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] p-1 text-sm">
+          {([["mes", "Mês"], ["ano", "Ano"], ["tudo", "Tudo"]] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={periodo === value}
+              onClick={() => setPeriodo(value)}
+              className={`min-h-9 rounded-md px-3 font-medium transition-colors ${periodo === value ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {periodo !== "tudo" && (
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] px-1 py-1 text-sm">
+            <button
+              type="button"
+              onClick={() => setMesRef((current) => shiftMonth(current, periodo === "ano" ? -12 : -1))}
+              className="grid size-9 place-items-center rounded-md text-ink-muted transition-colors hover:bg-white/5 hover:text-ink"
+              aria-label={periodo === "ano" ? "Ano anterior" : "Mês anterior"}
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="min-w-28 text-center font-medium capitalize text-ink">
+              {periodo === "ano" ? mesRef.slice(0, 4) : monthLabel(mesRef)}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMesRef((current) => shiftMonth(current, periodo === "ano" ? 12 : 1))}
+              className="grid size-9 place-items-center rounded-md text-ink-muted transition-colors hover:bg-white/5 hover:text-ink"
+              aria-label={periodo === "ano" ? "Próximo ano" : "Próximo mês"}
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Filter bar */}
       <div className="gz-rise flex flex-wrap items-center gap-3" style={{ animationDelay: "0ms" }}>
         <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-card)] px-3 py-1.5 text-sm">
@@ -316,7 +382,7 @@ export default function TransacoesPage() {
           value={String(filtrada.length)}
           tone="neutral"
           icon={<Receipt className="h-4 w-4" strokeWidth={2} />}
-          hint="no período filtrado"
+          hint={periodo === "tudo" ? "em todo o histórico" : periodo === "ano" ? `em ${mesRef.slice(0, 4)}` : monthLabel(mesRef)}
         />
         <KpiCard
           className="gz-rise col-span-6 sm:col-span-3"
@@ -408,25 +474,14 @@ export default function TransacoesPage() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      {confirmDelete === t.id ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(t.id)}
-                          className="rounded-lg p-1.5 text-neg transition-colors hover:bg-red-500/10"
-                          aria-label="Confirmar exclusão"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(t.id)}
-                          className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-red-500/10 hover:text-neg"
-                          aria-label={`Excluir ${t.descricao}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(t.id)}
+                        className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-red-500/10 hover:text-neg active:scale-90"
+                        aria-label={`Excluir ${t.descricao}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </td>
                 </motion.tr>
@@ -470,6 +525,59 @@ export default function TransacoesPage() {
           onCancel={() => setEditando(null)}
         />
       )}
+
+      {/* Confirmação de exclusão */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            className="fixed inset-0 z-[var(--z-modal,120)] grid place-items-center bg-black/60 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.18 }}
+            onClick={() => setConfirmDelete(null)}
+          >
+            <motion.div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="confirm-delete-title"
+              className="ios-glass w-full max-w-sm rounded-[1.5rem] p-6 text-center shadow-2xl"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: reduceMotion ? 0.01 : 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-rose-500/15 text-neg">
+                <Trash2 className="size-6" />
+              </span>
+              <h2 id="confirm-delete-title" className="mt-4 text-lg font-semibold text-ink">
+                Excluir transação?
+              </h2>
+              <p className="mt-1.5 text-sm text-ink-soft">
+                {lista.find((t) => t.id === confirmDelete)?.descricao} — esta ação não pode ser desfeita.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm font-semibold text-ink-soft transition-all hover:text-ink active:scale-95"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { const id = confirmDelete; setConfirmDelete(null); void handleDelete(id); }}
+                  className="flex-1 rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-rose-600 active:scale-95"
+                  autoFocus
+                >
+                  Excluir
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

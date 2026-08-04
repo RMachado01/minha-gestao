@@ -1,16 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calculator, Car, Check, Fuel, Gauge, LoaderCircle, Plus } from "lucide-react";
+import { AlertTriangle, Calculator, Check, Coins, Fuel, Gauge, LoaderCircle, Plus, Wrench } from "lucide-react";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { VehicleManager, type VehicleRecord } from "@/components/uber/VehicleManager";
+import { VehicleCostCard } from "@/components/garage/VehicleCostCard";
+import { MaintenanceDialog } from "@/components/garage/MaintenanceDialog";
+import { VehicleCostsDialog } from "@/components/garage/VehicleCostsDialog";
+import { TripTracker } from "@/components/tracking/TripTracker";
 import { formatBRL } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { calcEnergyConsumed, calcEnergyCost, type Powertrain } from "@/lib/uberCalc";
+import { useGarage } from "@/lib/supabase/useGarage";
+import { MAINTENANCE_INTERVALS } from "@/lib/vehicleCosts";
 
 type GarageEntry = { id: string; date: string; km: number; totalCost: number };
 
@@ -47,6 +53,10 @@ export default function GaragemPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [entries, setEntries] = useState<GarageEntry[]>([]);
+  // Custos de propriedade e manutenções (TCO) — camada profissional da garagem.
+  const garage = useGarage();
+  const [maintenanceFor, setMaintenanceFor] = useState<string | null>(null);
+  const [costsFor, setCostsFor] = useState<string | null>(null);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === vehicleId);
   const powertrain: Powertrain = selectedVehicle?.powertrain ?? "electric";
@@ -60,7 +70,6 @@ export default function GaragemPage() {
   const monthEntries = entries.filter((entry) => entry.date.startsWith(currentMonth));
   const kpiTotalKm = monthEntries.reduce((sum, entry) => sum + entry.km, 0);
   const kpiTotalFuel = monthEntries.reduce((sum, entry) => sum + entry.totalCost, 0);
-  const kpiAvgCostKm = kpiTotalKm > 0 ? kpiTotalFuel / kpiTotalKm : 0;
 
   function selectVehicle(id: string, list = vehicles) {
     setVehicleId(id);
@@ -174,10 +183,64 @@ export default function GaragemPage() {
     <section aria-labelledby="garagem-heading" className="flex flex-col gap-5 animate-[gz-rise_0.45s_ease-out_both]">
       <PageHeader eyebrow="Veículos" title="Garagem" description="Controle de veículos, consumo de combustível e manutenção." />
       <BentoGrid>
-        <KpiCard className="col-span-12 sm:col-span-6 lg:col-span-3" label="Total km este mês" value={`${kpiTotalKm.toLocaleString("pt-BR")} km`} tone="neutral" icon={<Gauge className="h-4 w-4" />} hint="Quilometragem acumulada no mês" />
-        <KpiCard className="col-span-12 sm:col-span-6 lg:col-span-3" label="Custo médio/km" value={formatBRL(kpiAvgCostKm)} tone="neutral" icon={<Calculator className="h-4 w-4" />} hint="Média ponderada do mês" />
-        <KpiCard className="col-span-12 sm:col-span-6 lg:col-span-3" label="Total em combustível" value={formatBRL(kpiTotalFuel)} tone="neg" icon={<Fuel className="h-4 w-4" />} hint="Soma de energia/combustível no mês" />
-        <KpiCard className="col-span-12 sm:col-span-6 lg:col-span-3" label="Veículos cadastrados" value={String(vehicles.length)} tone="neutral" icon={<Car className="h-4 w-4" />} hint="Ativos na garagem" />
+        <KpiCard
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
+          label="Custo real por km"
+          value={garage.fleet.perKm.totalPerKm > 0 ? formatBRL(garage.fleet.perKm.totalPerKm) : "—"}
+          tone="neutral"
+          icon={<Calculator className="h-4 w-4" />}
+          hint={garage.fleet.perKm.totalPerKm > 0 ? `${Math.round(garage.fleet.perKm.fixedShare * 100)}% vem de custo fixo` : "Registre rodagem e custos fixos"}
+        />
+        <KpiCard
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
+          label="Custo do mês"
+          value={formatBRL(garage.fleet.totalMonth)}
+          tone="neg"
+          icon={<Coins className="h-4 w-4" />}
+          hint={`${formatBRL(garage.fleet.variableMonth)} de uso + ${formatBRL(garage.fleet.fixedMonth)} fixo`}
+        />
+        <KpiCard
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
+          label="Rodagem do mês"
+          value={`${kpiTotalKm.toLocaleString("pt-BR")} km`}
+          tone="neutral"
+          icon={<Gauge className="h-4 w-4" />}
+          hint={kpiTotalFuel > 0 ? `${formatBRL(kpiTotalFuel)} em combustível e extras` : "Quilometragem acumulada no mês"}
+        />
+        <KpiCard
+          className="col-span-12 sm:col-span-6 lg:col-span-3"
+          label="Manutenções"
+          value={garage.fleet.alerts.length > 0 ? String(garage.fleet.alerts.length) : "Em dia"}
+          tone={garage.fleet.alerts.length > 0 ? "neg" : "pos"}
+          icon={<Wrench className="h-4 w-4" />}
+          hint={garage.fleet.alerts.length > 0 ? "Item(ns) vencendo ou atrasado(s)" : "Nenhum item vencendo"}
+        />
+
+        {garage.needsMigration && (
+          <div className="col-span-12 flex items-start gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-warn">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>A atualização do banco para custos de propriedade e manutenção ainda não foi aplicada. Aplique a migration <code>20260804000001_vehicle_tco_and_maintenance</code> para habilitar o custo real por km e os alertas.</span>
+          </div>
+        )}
+
+        {/* Custo de propriedade por veículo */}
+        {garage.analytics.length > 0 && (
+          <div className="col-span-12">
+            <SectionHeader
+              title="Custo por veículo"
+              subtitle="Custo real por km — combustível e extras somados aos custos fixos rateados"
+            />
+          </div>
+        )}
+        {garage.analytics.map((item) => (
+          <VehicleCostCard
+            key={item.vehicle.id}
+            data={item}
+            onRegisterMaintenance={setMaintenanceFor}
+            onEditCosts={setCostsFor}
+          />
+        ))}
+
         <VehicleManager />
 
         <GlassCard variant="liquid" className="col-span-12 p-6 lg:p-7">
@@ -194,11 +257,64 @@ export default function GaragemPage() {
               {error && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2 lg:col-span-3">{error}</p>}
               <button type="submit" className="btn-primary min-h-12 sm:col-span-2 lg:col-span-3" disabled={saving || vehicles.length === 0}>{saving ? <><LoaderCircle className="size-4 animate-spin" />Salvando...</> : saved ? <><Check className="size-4" />Registrado</> : <><Plus className="size-4" />Registrar uso</>}</button>
             </form>
+            <div className="flex flex-col gap-4">
+            <TripTracker
+              onApply={(trackedKm) => {
+                setDistanceMode("distance");
+                setKm(trackedKm);
+              }}
+            />
             <aside className="ios-glass rounded-3xl p-5" aria-live="polite"><div className="flex items-center justify-between"><span className="text-sm font-medium text-ink-soft">Custo estimado</span><Fuel className="size-5 text-accent" /></div><p className="tnum mt-3 text-4xl font-semibold text-ink">{formatBRL(totalCost)}</p><p className="mt-2 text-xs text-ink-muted">Custo total do trajeto</p><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Energia / combustível</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(energyCost)}</p><p className="mt-1 text-[11px] text-ink-muted">{energyConsumed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {powertrain === "electric" ? "kWh" : "litros"}</p></div><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Custo / km</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(costPerKm)}</p><p className="mt-1 text-[11px] text-ink-muted">{distanceKm.toLocaleString("pt-BR")} km percorridos</p></div></div></aside>
+            </div>
           </div>
           <div className="mt-6 border-t border-[var(--color-line)] pt-5"><SectionHeader title="Últimos registros" subtitle="Uso recente dos veículos" />{loading ? <p className="py-8 text-center text-sm text-ink-muted">Carregando registros...</p> : entries.length === 0 ? <p className="mt-3 rounded-2xl border border-dashed border-[var(--color-line)] py-8 text-center text-sm text-ink-muted">Nenhum uso registrado.</p> : <div className="mt-3 grid gap-2 sm:grid-cols-2">{entries.slice(0, 6).map((entry) => <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm"><p className="font-medium text-ink">{new Date(`${entry.date}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · {entry.km} km</p><span className="tnum font-semibold text-ink">{formatBRL(entry.totalCost)}</span></div>)}</div>}</div>
         </GlassCard>
+
+        {/* Histórico de manutenções */}
+        {garage.maintenances.length > 0 && (
+          <GlassCard variant="default" className="col-span-12">
+            <SectionHeader title="Manutenções" subtitle="Histórico de serviços e trocas" />
+            <div className="mt-3 divide-y divide-[var(--color-line)]">
+              {garage.maintenances.slice(0, 8).map((item) => {
+                const vehicle = garage.vehicles.find((v) => v.id === item.vehicle_id);
+                return (
+                  <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--color-accent)_14%,transparent)] text-accent">
+                        <Wrench className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">
+                          {MAINTENANCE_INTERVALS[item.kind]?.label ?? "Manutenção"}
+                          {item.description ? ` · ${item.description}` : ""}
+                        </p>
+                        <p className="text-xs text-ink-muted">
+                          {new Date(`${item.occurred_on}T12:00:00`).toLocaleDateString("pt-BR")}
+                          {vehicle ? ` · ${vehicle.brand} ${vehicle.model}` : ""}
+                          {item.odometer ? ` · ${item.odometer.toLocaleString("pt-BR")} km` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="tnum font-semibold text-ink">{formatBRL(item.cost)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
+        )}
       </BentoGrid>
+
+      <MaintenanceDialog
+        vehicle={garage.vehicles.find((v) => v.id === maintenanceFor) ?? null}
+        onClose={() => setMaintenanceFor(null)}
+        onSaved={garage.refresh}
+      />
+
+      <VehicleCostsDialog
+        vehicle={garage.vehicles.find((v) => v.id === costsFor) ?? null}
+        onClose={() => setCostsFor(null)}
+        onSaved={garage.refresh}
+      />
     </section>
   );
 }

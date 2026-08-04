@@ -308,6 +308,13 @@ input[type="checkbox"] { accent-color: var(--color-accent); }
 .login-card-enter { animation: login-card-enter .5s var(--ease-out) both; }
 .login-title { font-family: var(--font-newsreader), ui-serif, Georgia, serif; }
 
+/* Rastreio por GPS: o carro fica fixo e a pista corre sob ele, indicando que a
+   gravação está ativa. Só transform, para animar na GPU sem custo de bateria. */
+@keyframes track-road { to { transform: translateX(-34px); } }
+@keyframes track-bob { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
+.track-road-lines { animation: track-road .55s linear infinite; }
+.track-car { animation: track-bob .5s ease-in-out infinite alternate; }
+
 @keyframes bento-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .bento-stagger > * { animation: bento-in var(--duration-sheet) var(--ease-out) both; }
 .bento-stagger > *:nth-child(2) { animation-delay: 35ms; }

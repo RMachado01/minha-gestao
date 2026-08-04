@@ -63,6 +63,14 @@ Uma seção por funcionalidade, com onde vive no código e as regras que não s�
 - `investments` + `investment_snapshots` (valor atual) + `investment_income` (proventos).
 - **Cotações:** o frontend NÃO chama a brapi.dev; só lê `market_quote_cache`. Quem alimenta é um job externo (GitHub Actions `scripts/refresh_market_quotes.py`) usando `BRAPI_TOKEN` + `SUPABASE_SERVICE_ROLE_KEY` como secrets do GitHub.
 
+## Rastreio de trajeto por GPS
+
+- Código: `lib/tracking/distance.ts` (cálculo puro, com testes), `lib/tracking/useTripTracker.ts` (hook) e `components/tracking/TripTracker.tsx` (UI). Aparece na **Garagem** e no **diário do Uber**; ao encerrar, preenche o campo de quilômetros.
+- **Limitação incontornável (leia antes de prometer):** navegadores **suspendem o JavaScript** quando a tela é bloqueada ou o app vai para segundo plano — no iOS isso é garantido. **Não existe rastreio em background num PWA**, e o **TWA não resolve** (é um webview do Chrome, herda as mesmas regras). Rastreio estilo Uber com tela apagada exigiria app nativo (ou Capacitor/React Native com plugin de background geolocation).
+- Mitigações adotadas: **Wake Lock** mantém a tela acesa durante o trajeto, e a UI **avisa explicitamente** quando o app sai da tela (a distância pode ter ficado menor que a real).
+- **Filtro de ruído (essencial):** somar todos os pontos crus do GPS infla a distância — parado num semáforo o aparelho oscila metros e cada oscilação viraria percurso. `displacementToAdd` descarta leituras com precisão pior que 50 m, movimentos menores que 10 m e saltos acima de 200 km/h (perda de sinal).
+- **Privacidade/LGPD:** os pontos ficam **apenas em memória, no aparelho**. A rota **não é persistida nem enviada** — só o agregado (km, duração, velocidade média) entra no lançamento. Isso é minimização de dados deliberada; se um dia a rota for salva, será preciso consentimento específico e seção própria na política de privacidade.
+
 ## Uber / Garagem
 
 - `app/uber` — diário de corridas (`uber_daily_entries`); cálculo de lucro em `lib/uberCalc.ts` (tem testes).
