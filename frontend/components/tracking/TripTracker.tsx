@@ -4,6 +4,52 @@ import { AlertTriangle, Check, Navigation, Square, TriangleAlert } from "lucide-
 import { useTripTracker } from "@/lib/tracking/useTripTracker";
 import { formatDuration } from "@/lib/tracking/distance";
 
+/** Carro visto de lado, em currentColor. */
+function Car({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 13.5v-2.6c0-.4.24-.76.6-.92l1.8-.78 1.5-1.9c.3-.4.78-.62 1.3-.62h5.6c.5 0 .98.2 1.32.56l1.9 1.96 3.3 1.06c.5.16.85.62.85 1.14v2.1H3z"
+        fill="currentColor"
+        fillOpacity=".14"
+      />
+      <circle cx="7.6" cy="15.4" r="1.9" />
+      <circle cx="16.6" cy="15.4" r="1.9" />
+      <path d="M3 13.5h1.9M10 13.5h4.6M19.4 13.5H21" />
+    </svg>
+  );
+}
+
+/**
+ * Pista com o carro fixo e as faixas correndo por baixo — sinaliza que a
+ * gravação está ativa. As animações vivem no globals.css (só transform, na
+ * GPU) e param sozinhas quando o sistema pede "reduzir movimento".
+ */
+function RoadStrip() {
+  return (
+    <div className="relative flex h-12 items-center overflow-hidden rounded-xl bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)]">
+      <Car className="track-car relative z-10 ml-6 size-8 text-accent" />
+      <div
+        aria-hidden
+        className="track-road-lines absolute inset-x-0 bottom-3 h-[3px]"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, var(--color-line-strong) 0 18px, transparent 18px 34px)",
+        }}
+      />
+    </div>
+  );
+}
+
 /**
  * Rastreio de trajeto por GPS. Ao encerrar, entrega a quilometragem medida
  * para o formulário que o contém (garagem ou diário de corridas).
@@ -37,6 +83,13 @@ export function TripTracker({ onApply }: { onApply: (km: number) => void }) {
           </span>
         )}
       </div>
+
+      {/* Pista animada — só enquanto a gravação está ativa */}
+      {running && (
+        <div className="mt-4">
+          <RoadStrip />
+        </div>
+      )}
 
       {/* Leitura ao vivo */}
       {(running || state === "finished") && (
