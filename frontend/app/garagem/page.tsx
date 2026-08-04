@@ -11,6 +11,7 @@ import { VehicleManager, type VehicleRecord } from "@/components/uber/VehicleMan
 import { VehicleCostCard } from "@/components/garage/VehicleCostCard";
 import { MaintenanceDialog } from "@/components/garage/MaintenanceDialog";
 import { VehicleCostsDialog } from "@/components/garage/VehicleCostsDialog";
+import { TripTracker } from "@/components/tracking/TripTracker";
 import { formatBRL } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { calcEnergyConsumed, calcEnergyCost, type Powertrain } from "@/lib/uberCalc";
@@ -256,7 +257,15 @@ export default function GaragemPage() {
               {error && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2 lg:col-span-3">{error}</p>}
               <button type="submit" className="btn-primary min-h-12 sm:col-span-2 lg:col-span-3" disabled={saving || vehicles.length === 0}>{saving ? <><LoaderCircle className="size-4 animate-spin" />Salvando...</> : saved ? <><Check className="size-4" />Registrado</> : <><Plus className="size-4" />Registrar uso</>}</button>
             </form>
+            <div className="flex flex-col gap-4">
+            <TripTracker
+              onApply={(trackedKm) => {
+                setDistanceMode("distance");
+                setKm(trackedKm);
+              }}
+            />
             <aside className="ios-glass rounded-3xl p-5" aria-live="polite"><div className="flex items-center justify-between"><span className="text-sm font-medium text-ink-soft">Custo estimado</span><Fuel className="size-5 text-accent" /></div><p className="tnum mt-3 text-4xl font-semibold text-ink">{formatBRL(totalCost)}</p><p className="mt-2 text-xs text-ink-muted">Custo total do trajeto</p><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Energia / combustível</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(energyCost)}</p><p className="mt-1 text-[11px] text-ink-muted">{energyConsumed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {powertrain === "electric" ? "kWh" : "litros"}</p></div><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Custo / km</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(costPerKm)}</p><p className="mt-1 text-[11px] text-ink-muted">{distanceKm.toLocaleString("pt-BR")} km percorridos</p></div></div></aside>
+            </div>
           </div>
           <div className="mt-6 border-t border-[var(--color-line)] pt-5"><SectionHeader title="Últimos registros" subtitle="Uso recente dos veículos" />{loading ? <p className="py-8 text-center text-sm text-ink-muted">Carregando registros...</p> : entries.length === 0 ? <p className="mt-3 rounded-2xl border border-dashed border-[var(--color-line)] py-8 text-center text-sm text-ink-muted">Nenhum uso registrado.</p> : <div className="mt-3 grid gap-2 sm:grid-cols-2">{entries.slice(0, 6).map((entry) => <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm"><p className="font-medium text-ink">{new Date(`${entry.date}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · {entry.km} km</p><span className="tnum font-semibold text-ink">{formatBRL(entry.totalCost)}</span></div>)}</div>}</div>
         </GlassCard>

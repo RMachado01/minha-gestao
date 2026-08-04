@@ -7,6 +7,7 @@ import { formatBRL } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { calcEnergyConsumed, calcEnergyCost, type Powertrain } from "@/lib/uberCalc";
 import type { VehicleRecord } from "@/components/uber/VehicleManager";
+import { TripTracker } from "@/components/tracking/TripTracker";
 
 type Entry = {
   id: string;
@@ -202,7 +203,15 @@ export function DailyUberEntry() {
           {error && <p role="alert" className="rounded-2xl bg-rose-400/10 p-3 text-sm text-neg sm:col-span-2 lg:col-span-3">{error}</p>}
           <button type="submit" className="btn-primary min-h-12 sm:col-span-2 lg:col-span-3" disabled={saving || vehicles.length === 0}>{saving ? <><LoaderCircle className="size-4 animate-spin" />Salvando...</> : saved ? <><Check className="size-4" />Dia registrado</> : <><Plus className="size-4" />Adicionar ao diário</>}</button>
         </form>
+        <div className="flex flex-col gap-4">
+        <TripTracker
+          onApply={(trackedKm) => {
+            setDistanceMode("distance");
+            setKm(trackedKm);
+          }}
+        />
         <aside className="ios-glass rounded-3xl p-5" aria-live="polite"><div className="flex items-center justify-between"><span className="text-sm font-medium text-ink-soft">Lucro estimado</span><TrendingUp className={`size-5 ${profit >= 0 ? "text-pos" : "text-neg"}`} /></div><p className={`tnum mt-3 text-4xl font-semibold ${profit >= 0 ? "text-pos" : "text-neg"}`}>{formatBRL(profit)}</p><p className={`mt-2 text-xs font-semibold ${profitTrend >= 0 ? "text-pos" : "text-neg"}`}>{profitTrend >= 0 ? "+" : ""}{(profitTrend * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. últimos registros</p><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Energia / combustível</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(energy)}</p><p className="mt-1 text-[11px] text-ink-muted">{energyConsumed.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {powertrain === "electric" ? "kWh" : "litros"}</p></div><div className="rounded-2xl bg-black/[.045] p-3"><p className="text-xs text-ink-muted">Lucro / km</p><p className="tnum mt-1 font-semibold text-ink">{formatBRL(profitPerKm)}</p><p className="mt-1 text-[11px] text-ink-muted">Lucro / hora {formatBRL(profitPerHour)}</p></div></div><div className="mt-4 flex items-center gap-2 text-xs text-ink-muted"><Gauge className="size-4" />{distanceKm.toLocaleString("pt-BR")} km · custo total {formatBRL(totalCosts)}</div></aside>
+        </div>
       </div>
       <div className="mt-6 border-t border-[var(--color-line)] pt-5"><p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Últimos registros</p>{loading ? <p className="py-8 text-center text-sm text-ink-muted">Carregando diário...</p> : entries.length === 0 ? <p className="rounded-2xl border border-dashed border-[var(--color-line)] py-8 text-center text-sm text-ink-muted">Nenhum dia de trabalho registrado.</p> : <div className="grid gap-2 sm:grid-cols-2">{entries.map((entry) => <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-[var(--color-line)] px-4 py-3 text-sm"><div><p className="font-medium text-ink">{new Date(`${entry.date}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} · {entry.km} km</p><p className="text-xs text-ink-muted">Receita {formatBRL(entry.revenue)} · custos {formatBRL(entry.costs)}</p></div><span className={`tnum font-semibold ${entry.profit >= 0 ? "text-pos" : "text-neg"}`}>{formatBRL(entry.profit)}</span></div>)}</div>}</div>
     </GlassCard>
